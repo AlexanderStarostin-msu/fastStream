@@ -1,0 +1,87 @@
+PURPOSE
+Evaluate trajectories of a device moving in a flow field, including where it
+starts, whether and when it reaches a destination, and the conditions or
+consumption associated with the journey.
+
+IDENTIFIER CONVENTION
+Requirement identifiers use REQ-<SCOPE>-<TOPIC>. SCOPE is GEN for general
+requirements, DRONE for the city-drone scenario, and PILL for the pill-in-pipe
+scenario. TOPIC describes the requirement subject. Identifiers are independent
+of requirement ordering and should remain unchanged when requirements are
+inserted or reordered.
+
+GENERAL REQUIREMENTS
+
+REQ-GEN-FLOW
+The program shall evaluate device trajectories in a supplied or calculated
+flow field.
+
+REQ-GEN-REGIONS
+The program shall accept a start region and a destination region. Each region
+may be specified as a domain or a patch.
+
+REQ-GEN-START-LOCATIONS
+The program shall evaluate trajectories from multiple candidate starting
+locations within the specified start region and identify the starting
+locations that meet the scenario's destination and performance criteria.
+
+REQ-GEN-OUTCOMES
+The program shall report trajectory outcomes, including destination
+attainment and travel time, for the evaluated starting locations.
+
+REQ-GEN-DEVICE-MODELS
+The program shall support scenario-specific device models: a controlled
+vehicle model for the drone scenario and a physical-motion model for the pill
+scenario.
+
+USER STORY 1: DRONE IN THE CITY
+
+REQ-DRONE-OPENFOAM-FLOW
+The program shall support a city flow field calculated using OpenFOAM.
+
+REQ-DRONE-CITY-GEOMETRY
+The program shall support city-building geometry harvested from open sources.
+
+REQ-DRONE-CONTROL-MODEL
+The program shall model the drone using a control model.
+
+REQ-DRONE-FASTEST-ARRIVAL
+Given a specified start patch and destination domain or patch, the program
+shall evaluate drone trajectories from candidate locations on the start patch
+and identify the location or locations with the fastest arrival at the
+destination.
+
+REQ-DRONE-BATTERY-CONSUMPTION
+The program shall report battery consumption for each evaluated drone
+trajectory and for the fastest-arrival result.
+
+USER STORY 2: PILL IN THE CHAMBER
+
+REQ-PILL-STL-GEOMETRY
+The program shall accept geometry supplied as an STL file.
+
+REQ-PILL-START-LOCATIONS
+Given a specified start domain or patch and destination domain or patch, the
+program shall evaluate pill trajectories from candidate starting locations.
+
+REQ-PILL-PHYSICAL-MODEL
+The program shall model pill motion according to the applicable physical
+laws.
+
+REQ-PILL-TIME-LIMIT
+The program shall use 100 times the fluid residence time in the domain as the
+maximum evaluation time for deciding whether the pill reaches its destination
+in a reasonable time.
+
+REQ-PILL-REACHABLE-START-LOCATIONS
+The program shall identify starting locations from which the pill reaches
+the destination within the maximum evaluation time.
+
+REQ-PILL-STUCK-LOCATIONS
+The program shall identify starting locations where the pill becomes stuck,
+defined as its trajectory velocity falling below a specified low-velocity
+criterion. The criterion shall be an input to the evaluation.
+
+REQ-PILL-TRAJECTORY-OUTCOMES
+The program shall report the travel time or stuck outcome for each evaluated
+pill starting location.

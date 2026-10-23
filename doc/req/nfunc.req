@@ -1,0 +1,5 @@
+REQ 1
+Build code under the folder src
+
+REQ 2
+For C classes generate H and C files
