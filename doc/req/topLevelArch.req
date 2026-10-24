@@ -15,19 +15,42 @@ GENERAL REQUIREMENTS
 REQ-GEN-FLOW
 The program shall evaluate device trajectories in a supplied or calculated
 flow field.
+Implementation: Provide an OpenFOAM application in src/fsFoam. The application
+is run with an analysis case, reads its input dictionary from
+analysis_case_folder/system/fsStreamLineDict, and reads the OpenFOAM case to
+analyze from the dictionary's "case" entry. Resolve a relative "case" path
+relative to the analysis case; accept an absolute path as-is. Read the mesh and
+velocity field U from the latest numeric time directory in the referenced case.
 
 REQ-GEN-REGIONS
-The program shall accept a start region and a destination region. Each region
-may be specified as a domain or a patch.
+The program shall accept one or more start patches and one or more destination
+patches. Domain regions are not supported.
+Implementation: Read the patch names from "startPatches" and
+"destinationPatches" in fsStreamLineDict. Each entry is a list of patch names;
+default to "(inlet)" for startPatches and "(outlet)" for destinationPatches.
+Reject any configured patch name that does not exist in the analyzed mesh.
 
 REQ-GEN-START-LOCATIONS
 The program shall evaluate trajectories from multiple candidate starting
 locations within the specified start region and identify the starting
 locations that meet the scenario's destination and performance criteria.
+Implementation: Randomly sample points over the configured start patches,
+with sampling probability proportional to patch-face area. "nPoints" specifies
+the total number of seeds across all configured start patches.
 
 REQ-GEN-OUTCOMES
 The program shall report trajectory outcomes, including destination
 attainment and travel time, for the evaluated starting locations.
+Implementation: Track each streamline until it first intersects a boundary.
+It reaches its destination only if that first boundary is one of the configured
+destination patches; stop tracking at that intersection. Always write a
+per-streamline summary CSV for all evaluated paths under the analysis case's
+postProcessing/ directory. For each path, record a stable streamline/seed ID,
+start and end coordinates, total time of flight, whether a configured
+destination was reached, and the destination patch name if reached. Write
+streamline geometry in VTK format under the same analysis postProcessing/
+directory only when "outputStreamLines on" is set in fsStreamLineDict; VTK
+output is off by default.
 
 REQ-GEN-DEVICE-MODELS
 The program shall support scenario-specific device models: a controlled
