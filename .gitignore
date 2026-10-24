@@ -3,3 +3,5 @@
 src/*.png
 src/*.jpg
 src/*.bmp
+
+test/*/postProcessing
