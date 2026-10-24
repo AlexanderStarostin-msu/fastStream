@@ -1,0 +1,5 @@
+
+# No images in sources
+src/*.png
+src/*.jpg
+src/*.bmp
