@@ -1,0 +1,5 @@
+StreamlineVtkReader.C
+StreamlineSummaryWriter.C
+fslFoam.C
+
+EXE = $(FOAM_USER_APPBIN)/fslFoam

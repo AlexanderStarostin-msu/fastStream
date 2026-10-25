@@ -15,12 +15,15 @@ GENERAL REQUIREMENTS
 REQ-GEN-FLOW
 The program shall evaluate device trajectories in a supplied or calculated
 flow field.
-Implementation: Provide an OpenFOAM application in src/fsFoam. The application
+Implementation: Provide an OpenFOAM application in src/fslFoam. The application
 is run with an analysis case, reads its input dictionary from
 analysis_case_folder/system/fsStreamLineDict, and reads the OpenFOAM case to
 analyze from the dictionary's "case" entry. Resolve a relative "case" path
 relative to the analysis case; accept an absolute path as-is. Read the mesh and
 velocity field U from the latest numeric time directory in the referenced case.
+Classes involved: main() in fslFoam.C coordinates case setup and
+functionObjects::streamlines generates trajectories. StreamlineVtkReader reads
+the generated VTK into TrackData.
 
 REQ-GEN-REGIONS
 The program shall accept one or more start patches and one or more destination
@@ -29,6 +32,8 @@ Implementation: Read the patch names from "startPatches" and
 "destinationPatches" in fsStreamLineDict. Each entry is a list of patch names;
 default to "(inlet)" for startPatches and "(outlet)" for destinationPatches.
 Reject any configured patch name that does not exist in the analyzed mesh.
+Classes involved: No dedicated class yet; main() reads the patch lists and
+validates them against the mesh boundary.
 
 REQ-GEN-START-LOCATIONS
 The program shall evaluate trajectories from multiple candidate starting
@@ -37,6 +42,8 @@ locations that meet the scenario's destination and performance criteria.
 Implementation: Randomly sample points over the configured start patches,
 with sampling probability proportional to patch-face area. "nPoints" specifies
 the total number of seeds across all configured start patches.
+Classes involved: No dedicated class yet; main() configures
+functionObjects::streamlines with the boundaryRandom seed sample set.
 
 REQ-GEN-OUTCOMES
 The program shall report trajectory outcomes, including destination
@@ -45,66 +52,94 @@ Implementation: Track each streamline until it first intersects a boundary.
 It reaches its destination only if that first boundary is one of the configured
 destination patches; stop tracking at that intersection. Always write a
 per-streamline summary CSV for all evaluated paths under the analysis case's
-postProcessing/ directory. For each path, record a stable streamline/seed ID,
-start and end coordinates, total time of flight, whether a configured
+postProcessing/ directory sorted ascending by the TTF (total time of flight).
+For each path, record a stable streamline/seed ID,
+start and end coordinates, TTF, whether a configured
 destination was reached, and the destination patch name if reached. Write
 streamline geometry in VTK format under the same analysis postProcessing/
 directory only when "outputStreamLines on" is set in fsStreamLineDict; VTK
 output is off by default.
+Classes involved: Track and TrackData hold the parsed data;
+StreamlineVtkReader reads VTK; StreamlineSummaryWriter writes the CSV and
+classifies the ending boundary. main() controls optional VTK file copying.
 
 REQ-GEN-DEVICE-MODELS
 The program shall support scenario-specific device models: a controlled
 vehicle model for the drone scenario and a physical-motion model for the pill
 scenario.
+Classes involved: Not implemented. Future DroneControlModel and
+PillMotionModel classes will provide scenario-specific motion.
 
 USER STORY 1: DRONE IN THE CITY
 
 REQ-DRONE-OPENFOAM-FLOW
 The program shall support a city flow field calculated using OpenFOAM.
+Classes involved: main() loads the OpenFOAM case and invokes
+functionObjects::streamlines; there is no scenario-specific class.
 
 REQ-DRONE-CITY-GEOMETRY
 The program shall support city-building geometry harvested from open sources.
+Classes involved: Not implemented; no geometry-import class exists yet.
 
 REQ-DRONE-CONTROL-MODEL
 The program shall model the drone using a control model.
+Classes involved: Not implemented; planned DroneControlModel.
 
 REQ-DRONE-FASTEST-ARRIVAL
 Given a specified start patch and destination domain or patch, the program
 shall evaluate drone trajectories from candidate locations on the start patch
 and identify the location or locations with the fastest arrival at the
 destination.
+Classes involved: Not implemented; planned DroneTrajectoryEvaluator will
+compare candidate outcomes. StreamlineSummaryWriter currently writes generic
+trajectory outcomes only.
 
 REQ-DRONE-BATTERY-CONSUMPTION
 The program shall report battery consumption for each evaluated drone
 trajectory and for the fastest-arrival result.
+Classes involved: Not implemented; planned DroneBatteryModel.
 
 USER STORY 2: PILL IN THE CHAMBER
 
 REQ-PILL-STL-GEOMETRY
 The program shall accept geometry supplied as an STL file.
+Classes involved: Not implemented; a future StlGeometryReader would own STL
+input if this requirement is brought into scope.
 
 REQ-PILL-START-LOCATIONS
 Given a specified start domain or patch and destination domain or patch, the
 program shall evaluate pill trajectories from candidate starting locations.
+Classes involved: Not implemented; planned PillTrajectoryEvaluator. The
+current main() seed setup handles generic flow streamlines on patches only.
 
 REQ-PILL-PHYSICAL-MODEL
 The program shall model pill motion according to the applicable physical
 laws.
+Classes involved: Not implemented; planned PillMotionModel.
 
 REQ-PILL-TIME-LIMIT
 The program shall use 100 times the fluid residence time in the domain as the
 maximum evaluation time for deciding whether the pill reaches its destination
 in a reasonable time.
+Classes involved: Not implemented; planned PillTrajectoryEvaluator will apply
+the scenario time limit.
 
 REQ-PILL-REACHABLE-START-LOCATIONS
 The program shall identify starting locations from which the pill reaches
 the destination within the maximum evaluation time.
+Classes involved: Not implemented; planned PillTrajectoryEvaluator.
 
 REQ-PILL-STUCK-LOCATIONS
 The program shall identify starting locations where the pill becomes stuck,
 defined as its trajectory velocity falling below a specified low-velocity
 criterion. The criterion shall be an input to the evaluation.
+Classes involved: Not implemented; planned PillMotionModel will expose the
+velocity state and PillTrajectoryEvaluator will apply the configured
+criterion.
 
 REQ-PILL-TRAJECTORY-OUTCOMES
 The program shall report the travel time or stuck outcome for each evaluated
 pill starting location.
+Classes involved: Not implemented; planned PillTrajectoryReporter. The
+current StreamlineSummaryWriter reports generic flow-streamline outcomes,
+not pill-specific stuck states.
