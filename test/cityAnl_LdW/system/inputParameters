@@ -1,0 +1,11 @@
+pi              3.1415926535897932384626;
+
+// wind direction angle from north
+beta_deg        90.0;                      // in degrees
+U               0.1;
+
+// calculated parameters
+beta            #calc "($beta_deg*($pi)/180.0)";  // in radians
+Ux              #calc "$U*cos($beta)";      // wind velocity in x-direction
+Uy              #calc "$U*sin($beta)";      // wind velocity in y-direction
+

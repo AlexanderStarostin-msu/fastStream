@@ -1,0 +1,45 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volVectorField;
+    location    "0";
+    object      U;
+}
+
+#include "./system/inputParameters"
+
+dimensions      [0 1 -1 0 0 0 0];
+internalField   uniform ($Ux $Uy 0); 
+boundaryField
+{
+    // Updated by bndFromMap.py at 2026-10-25T20:14:40Z (UTC)
+        ground
+    {
+        type noSlip;
+    }
+
+        inlet
+    {
+        type inletOutlet;        value uniform ($Ux $Uy 0);   inletValue uniform ($Ux $Uy 0);
+    }
+
+        outlet
+    {
+        type inletOutlet;        value uniform ($Ux $Uy 0);   inletValue uniform ($Ux $Uy 0);
+    }
+
+        sides
+    {
+        type inletOutlet;        value uniform ($Ux $Uy 0);   inletValue uniform ($Ux $Uy 0);
+    }
+
+        top
+    {
+        type symmetryPlane;
+    }
+}

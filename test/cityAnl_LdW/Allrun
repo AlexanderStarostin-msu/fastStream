@@ -1,20 +1,28 @@
-mv LdW.stl constant/geometry/
-echo "Stl file moved to constant/geometry/"
-surfaceCheck constant/geometry/LdW.stl
-rm LdW*.obj
+if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != "--nomesh" ]; }; then
+    echo "Usage: $0 [--nomesh]" >&2
+    exit 2
+fi
 
-surfaceFeatures
+if [ "$#" -eq 0 ]; then
+    mv LdW.stl constant/geometry/
+    echo "Stl file moved to constant/geometry/"
+    surfaceCheck constant/geometry/LdW.stl
+    rm LdW*.obj
 
-python makeCase.py
+    surfaceFeatures
 
-blockMesh
+    python makeCase.py
 
-snappyHexMesh -overwrite
+    blockMesh > log.blockMesh
 
-checkMesh
+    snappyHexMesh -overwrite
+
+    checkMesh > log.checkMesh
+fi
 
 simpleFoam > log.simpleFoam
 
+foamToVTK -latestTime > log.foamToVTK
 ../../utils/vizStreamLines.py "./" xy > log.vizStreamLines 2>&1 && rm log.vizStreamLines
 
 fslFoam > log.fslFoam
