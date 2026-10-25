@@ -17,4 +17,26 @@ test/**/*.extendedFeatureEdgeMesh
 test/**/*.eMesh
 test/**/badFaces
 
-log.*
+test/**/dynamicCode
+test/**/VTK
+
+# OpenFOAM time directories
+test/**/[1-9]*/
+test/**/[1-9]*.[0-9]*/
+# Keep initial fields
+!0/
+!0/**
+
+# Parallel decomposition
+processor*/
+
+# Reconstruction leftovers
+processors*/
+
+# Post-processing
+postProcessing/
+
+# Logs
+log*
+*.log
+

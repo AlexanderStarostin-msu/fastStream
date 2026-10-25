@@ -1,3 +1,3 @@
 {
-    "postStartCommand": "bash source /workspaces/fastStream/OpenFOAM-10/etc/bashrc"
+    "postStartCommand": "bash -c 'source /workspaces/fastStream/OpenFOAM-10/etc/bashrc && foamVersion'"
 }
