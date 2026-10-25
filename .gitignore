@@ -1,11 +1,20 @@
 
 # No images in sources
-src/*.png
-src/*.jpg
-src/*.bmp
+src/**/*.png
+src/**/*.jpg
+src/**/*.bmp
 
-src/*/Make/linux*
+#TODO: Clarify how md created
+src/**/*.md
 
-test/*/postProcessing
+src/**/Make/linux*
+
+test/**/postProcessing
+test/**/constant/polyMesh
+test/**/*.vtk
+test/**/*.stl
+test/**/*.extendedFeatureEdgeMesh
+test/**/*.eMesh
+test/**/badFaces
 
 log.*

@@ -1,0 +1,23 @@
+mv LdW.stl constant/geometry/
+echo "Stl file moved to constant/geometry/"
+surfaceCheck constant/geometry/LdW.stl
+rm LdW*.obj
+
+surfaceFeatures
+
+python makeCase.py
+
+blockMesh
+
+snappyHexMesh -overwrite
+
+checkMesh
+
+simpleFoam > log.simpleFoam
+
+../../utils/vizStreamLines.py "./" xy > log.vizStreamLines 2>&1 && rm log.vizStreamLines
+
+fslFoam > log.fslFoam
+
+refOFCase=LdW
+mv $refOFCase.png ./postProcessing/$refOFCase/

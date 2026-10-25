@@ -1,22 +1,25 @@
 #Start with the vanila blank Codebade VM
 
-#python wheels
+#python wheel for vtk
 pip install pyvista vtk
 
+sudo apt update
+
+#for QGIS
+sudo apt install -y gdal-bin libgdal-dev sqlite3 libspatialite-dev python3-pip
+pip install geopandas shapely pyogrio trimesh numpy scipy fiona
+pip install mapbox-earcut # triangulation for pyvista
+
 #for image generation
-sudo apt-get update
 sudo apt-get install -y libosmesa6 libosmesa6-dev
 
 #Flex
-sudo apt update
 sudo apt install flex bison
 
 #OpenMPI
-sudo apt update
 sudo apt install -y openmpi-bin libopenmpi-dev
         
 #scotch
-sudo apt update
 sudo apt install libscotch-dev
 sudo apt install libptscotch-dev
 
