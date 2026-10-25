@@ -4,4 +4,8 @@ src/*.png
 src/*.jpg
 src/*.bmp
 
+src/*/Make/linux*
+
 test/*/postProcessing
+
+log.*
