@@ -1,11 +1,14 @@
+#include "Zermelo/ZermeloTrjNoFlow.H"
+
 #include "argList.H"
 #include "fvCFD.H"
 #include "streamlines.H"
 #include "instantList.H"
 #include "meshSearch.H"
-#include "StreamlineSummaryWriter.H"
-#include "StreamlineTrackData.H"
-#include "StreamlineVtkReader.H"
+#include "Streamlines/MotionCorridorConstraint.H"
+#include "Streamlines/StreamlineSummaryWriter.H"
+#include "Streamlines/StreamlineTrackData.H"
+#include "Streamlines/StreamlineVtkReader.H"
 
 using namespace Foam;
 
@@ -321,6 +324,21 @@ int main(int argc, char *argv[])
             "destination"
         );
 
+        if (inputDict.found("ZermeloTrjNoFlow"))
+        {
+            const dictionary& zermeloDict =
+                inputDict.subDict("ZermeloTrjNoFlow");
+            ZermeloTrjNoFlow zermelo(mesh, inputDict, zermeloDict);
+            zermelo.generate
+            (
+                nPoints,
+                finalOutput/"zermelo-no-flow.csv",
+                finalOutput/"zermelo-no-flow.vtk"
+            );
+        }
+
+        MotionCorridorConstraint corridorConstraint(mesh, inputDict);
+
         dictionary seedSampleSet;
         seedSampleSet.add("type", word("boundaryRandom"));
         seedSampleSet.add("patches", startPatches);
@@ -355,7 +373,8 @@ int main(int argc, char *argv[])
         (
             search,
             mesh,
-            destinationPatches
+            destinationPatches,
+            corridorConstraint
         );
         summaryWriter.write(finalOutput/"streamlines.csv", tracks);
     }

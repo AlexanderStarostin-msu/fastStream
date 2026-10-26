@@ -5,10 +5,10 @@ consumption associated with the journey.
 
 IDENTIFIER CONVENTION
 Requirement identifiers use REQ-<SCOPE>-<TOPIC>. SCOPE is GEN for general
-requirements, DRONE for the city-drone scenario, and PILL for the pill-in-pipe
-scenario. TOPIC describes the requirement subject. Identifiers are independent
-of requirement ordering and should remain unchanged when requirements are
-inserted or reordered.
+requirements, DRONE for the city-drone scenario, PILL for the pill-in-pipe
+scenario, and NOFLOW for flow-independent route generation. TOPIC describes
+the requirement subject. Identifiers are independent of requirement ordering
+and should remain unchanged when requirements are inserted or reordered.
 
 GENERAL REQUIREMENTS
 
@@ -45,6 +45,25 @@ the total number of seeds across all configured start patches.
 Classes involved: No dedicated class yet; main() configures
 functionObjects::streamlines with the boundaryRandom seed sample set.
 
+REQ-MOTION-SPACE
+The program shall constrain each evaluated device trajectory to a configured
+height range and enforce a configured minimum clearance from buildings, trees,
+and other obstacle geometry. A trajectory that leaves the height range or
+violates the clearance requirement shall not be considered feasible.
+Implementation: Configure the minimum and maximum heights and obstacle
+clearance for the scenario using "minHeight", "maxHeight",
+"minObstacleClearance", and "obstaclePatches" in fsStreamLineDict. Height is
+the z coordinate. The height limits default to unbounded and obstacle
+clearance defaults to zero, imposing no restriction. Check each point in the
+generated streamline against the configured limits; a positive clearance
+requires one or more named obstacle boundary patches. Report paths that
+violate a constraint as out_of_corridor. This flow-streamline application
+does not currently model stuck device motion.
+Classes involved: MotionCorridorConstraint checks height and obstacle
+clearance. StreamlineSummaryWriter applies it to each parsed track and reports
+the resulting outcome; scenario-specific trajectory evaluators remain future
+work.
+
 REQ-GEN-OUTCOMES
 The program shall report trajectory outcomes, including destination
 attainment and travel time, for the evaluated starting locations.
@@ -54,14 +73,18 @@ destination patches; stop tracking at that intersection. Always write a
 per-streamline summary CSV for all evaluated paths under the analysis case's
 postProcessing/ directory sorted ascending by the TTF (total time of flight).
 For each path, record a stable streamline/seed ID,
-start and end coordinates, TTF, whether a configured
-destination was reached, and the destination patch name if reached. Write
+start and end coordinates, TTF, whether a configured destination was reached,
+the outcome (success, out_of_corridor, other_boundary, or tracking_limit),
+and the destination patch name if reached. A path is successful only if it
+reaches a configured destination and remains within the motion corridor.
+Write
 streamline geometry in VTK format under the same analysis postProcessing/
 directory only when "outputStreamLines on" is set in fsStreamLineDict; VTK
 output is off by default.
 Classes involved: Track and TrackData hold the parsed data;
-StreamlineVtkReader reads VTK; StreamlineSummaryWriter writes the CSV and
-classifies the ending boundary. main() controls optional VTK file copying.
+StreamlineVtkReader reads VTK; StreamlineSummaryWriter writes the CSV,
+classifies the ending boundary, and applies MotionCorridorConstraint.
+main() controls optional VTK file copying.
 
 REQ-GEN-DEVICE-MODELS
 The program shall support scenario-specific device models: a controlled
@@ -143,3 +166,42 @@ pill starting location.
 Classes involved: Not implemented; planned PillTrajectoryReporter. The
 current StreamlineSummaryWriter reports generic flow-streamline outcomes,
 not pill-specific stuck states.
+
+REQ-NOFLOW-ZRM
+When the analysis dictionary contains a "ZermelloTrjNoFlow" block, the
+program shall generate no-flow device routes independently of the
+flow-following streamlines. In the first implementation, each route shall lie
+in a horizontal plane at the midpoint of finite, configured minHeight and
+maxHeight values. If variableHeight is enabled, the program shall use a 3D
+route constrained to that height range; until 3D routing is implemented, it
+shall reject this setting rather than silently use a 2D route.
+Implementation: Use the existing startPatches and destinationPatches settings.
+Intersect these boundary patches with the route plane. Sample start points
+along the start-patch intersections, weighted by segment length, using
+nPoints. Require an obstaclePatches list naming boundary patches whose
+intersection with the route plane forms closed obstacle footprints. Require a
+positive deviceRadius; allow an optional, non-negative obstacleMargin,
+defaulting to zero. Expand obstacle footprints by deviceRadius plus
+obstacleMargin. For each start point, find the nearest point on any reachable
+destination-patch intersection and route to it along the shortest
+collision-free piecewise-linear path around the expanded footprints, using a
+visibility graph. The route shall not depend on the flow velocity field.
+Compute route length from its waypoints and travel time using deviceSpeed,
+defaulting to 0.1 m/s; configured speed shall be positive.
+Write successful routes to output separate from streamline results, recording
+a stable route ID, start and end coordinates, waypoints, route length, and
+travel time. If no feasible route exists for a start, omit its route geometry
+and log the unreachable start. The 3D variable-height route algorithm is
+future work; enabling it before it is implemented shall produce a clear
+configuration error.
+Classes involved: ZermelloTrajectoryGenerator is the abstract base class and
+owns common configuration and validation, route-space and obstacle
+preparation, patch intersection and start sampling, destination selection,
+shared result collection, travel-time calculation, and unreachable-start
+logging. It defines the generation workflow and an overridable route-building
+strategy. ZermelloTrjNoFlow derives from it and implements the 2D
+visibility-graph strategy for shortest collision-free routes in the
+fixed-height plane. ZermelloConstantFlow is a planned derived generator for a
+constant-flow route strategy; its flow-dependent route behavior is not
+specified here. ZermelloRouteWriter writes Zermello results separately from
+streamline output.

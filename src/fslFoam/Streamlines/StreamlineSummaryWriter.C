@@ -18,6 +18,8 @@ struct SummaryRow
     point start;
     point end;
     scalar timeOfFlight;
+    bool reachedDestination;
+    word outcome;
     word destinationPatch;
 };
 
@@ -28,12 +30,14 @@ StreamlineSummaryWriter::StreamlineSummaryWriter
 (
     const meshSearch& search,
     const fvMesh& mesh,
-    const wordList& destinationPatches
+    const wordList& destinationPatches,
+    const MotionCorridorConstraint& corridorConstraint
 )
 :
     search_(search),
     mesh_(mesh),
-    destinationPatches_(destinationPatches)
+    destinationPatches_(destinationPatches),
+    corridorConstraint_(corridorConstraint)
 {}
 
 
@@ -54,7 +58,7 @@ void StreamlineSummaryWriter::write
     output
         << "streamline_id,start_x,start_y,start_z,"
         << "end_x,end_y,end_z,time_of_flight,reached_destination,"
-        << "destination_patch\n"
+        << "outcome,destination_patch\n"
         << std::fixed << std::setprecision(6);
 
     const scalar boundaryTolerance =
@@ -76,7 +80,29 @@ void StreamlineSummaryWriter::write
         const scalar flightTime =
             max(scalar(0), tracks.ages[endId] - tracks.ages[startId]);
 
+        bool trajectoryAdmissible = true;
+        for
+        (
+            std::size_t pointi = 0;
+            pointi < track.pointIds.size();
+            ++pointi
+        )
+        {
+            if
+            (
+                !corridorConstraint_.isAdmissible
+                (
+                    tracks.points[track.pointIds[pointi]]
+                )
+            )
+            {
+                trajectoryAdmissible = false;
+                break;
+            }
+        }
+
         word destinationPatch(word::null);
+        bool endedAtBoundary = false;
         const label boundaryFace = search_.findNearestBoundaryFace(end);
         if (boundaryFace >= mesh_.nInternalFaces())
         {
@@ -85,6 +111,7 @@ void StreamlineSummaryWriter::write
                 face.nearestPoint(end, mesh_.points());
             if (nearestPoint.distance() <= boundaryTolerance)
             {
+                endedAtBoundary = true;
                 const label patchi =
                     mesh_.boundaryMesh().whichPatch(boundaryFace);
                 if
@@ -108,6 +135,23 @@ void StreamlineSummaryWriter::write
         row.start = start;
         row.end = end;
         row.timeOfFlight = flightTime;
+        row.reachedDestination = !destinationPatch.empty();
+        if (!trajectoryAdmissible)
+        {
+            row.outcome = "out_of_corridor";
+        }
+        else if (row.reachedDestination)
+        {
+            row.outcome = "success";
+        }
+        else if (endedAtBoundary)
+        {
+            row.outcome = "other_boundary";
+        }
+        else
+        {
+            row.outcome = "tracking_limit";
+        }
         row.destinationPatch = destinationPatch;
         rows.push_back(row);
     }
@@ -132,7 +176,8 @@ void StreamlineSummaryWriter::write
             << row.end.x() << ',' << row.end.y() << ','
             << row.end.z() << ','
             << row.timeOfFlight << ','
-            << (row.destinationPatch.empty() ? "false" : "true") << ','
+            << (row.reachedDestination ? "true" : "false") << ','
+            << row.outcome.c_str() << ','
             << row.destinationPatch.c_str() << '\n';
     }
 
