@@ -17,29 +17,29 @@ dimensions      [0 1 -1 0 0 0 0];
 internalField   uniform ($Ux $Uy 0); 
 boundaryField
 {
-    // Updated by bndFromMap.py at 2026-10-25T20:14:40Z (UTC)
-        ground
-    {
-        type noSlip;
-    }
+    // Updated by bndFromMap.py at 2026-10-26T23:25:17Z (UTC)
+                ground
+        {
+            type noSlip;
+        }
 
-        inlet
-    {
-        type inletOutlet;        value uniform ($Ux $Uy 0);   inletValue uniform ($Ux $Uy 0);
-    }
+                inlet
+        {
+            type fixedValue;        value uniform ($U 0 0);
+        }
 
-        outlet
-    {
-        type inletOutlet;        value uniform ($Ux $Uy 0);   inletValue uniform ($Ux $Uy 0);
-    }
+                outlet
+        {
+            type zeroGradient;
+        }
 
-        sides
-    {
-        type inletOutlet;        value uniform ($Ux $Uy 0);   inletValue uniform ($Ux $Uy 0);
-    }
+                sides
+        {
+            type zeroGradient;
+        }
 
-        top
-    {
-        type symmetryPlane;
-    }
+                top
+        {
+            type symmetryPlane;
+        }
 }

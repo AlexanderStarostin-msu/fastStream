@@ -1,25 +1,21 @@
 # Mesh patches: inlet, outlet, sides, top, ground.
-# Assumptions: beta is a clockwise bearing from north for the direction the
-# wind travels toward; beta_deg=90 therefore gives flow in +x (east).
-# No reference wind speed is supplied, so inlet speed is normalized to 1 m/s.
-# Turbulence entries assume a standard k-epsilon RANS model and 5% inlet
-# turbulence intensity. 
+# as in simpleFoam example
 inlet:
-    U:  type inletOutlet;        value uniform ($Ux $Uy 0);   inletValue uniform ($Ux $Uy 0);
+    U:  type fixedValue;        value uniform ($U 0 0);   
     p:  type zeroGradient;
     k:  type fixedValue;        value uniform 0.00375;
     epsilon:    type fixedValue;    value uniform 0.000004;
     omega:      type fixedValue;    value uniform 1.0;
     nut:        type calculated;      value uniform 0;
 outlet:
-    U:  type inletOutlet;        value uniform ($Ux $Uy 0);   inletValue uniform ($Ux $Uy 0);
-    p:  type zeroGradient;
-    k:  type fixedValue;        value uniform 0.00375;
+    U:  type zeroGradient;
+    p:  type totalPressure;  p0 uniform 0;  value uniform 0;
+    k:  type fixedValue;  value uniform 0.00375;
     epsilon:    type fixedValue;    value uniform 0.000004;
     omega:      type fixedValue;    value uniform 1.0;
     nut:        type calculated;      value uniform 0;
 sides:
-    U:  type inletOutlet;        value uniform ($Ux $Uy 0);   inletValue uniform ($Ux $Uy 0);
+    U:  type zeroGradient;
     p:  type zeroGradient;
     k:  type fixedValue;        value uniform 0.00375;
     epsilon:    type fixedValue;    value uniform 0.000004;

@@ -1,0 +1,42 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| fsFoam input: copy this file into the analysis case's system directory.    |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fsStreamLineDict;
+}
+
+case "./";
+
+// Defaults: one inlet start patch and one outlet destination patch.
+startPatches        (inlet);
+destinationPatches  (outlet);
+
+// Flight corridor is 10-20 m above ground, below the tallest 50 m buildings.
+minHeight           5;
+maxHeight           25;
+
+// Preview-only buffer used by plotGridSlice.py around STL building footprints.
+visualizationClearance 10;
+
+// Number of area-weighted seed points over the selected start patches.
+nPoints             100;
+lifeTime            100000;
+nSubCycle           5;
+
+outputStreamLines on;
+
+// obstaclePatches defaults to (ground). Regenerate the mesh using
+// snappyHexMeshDict so building walls are included in the ground patch.
+// Zermelo uses the shared nPoints value above; lifeTime and nSubCycle apply
+// only to flow streamline integration.
+// ZermeloTrjNoFlow
+// {
+//      deviceRadius        0.5;
+//      obstacleMargin      0.5;
+//      deviceSpeed         0.1;
+//      variableHeight      false;
+// }
