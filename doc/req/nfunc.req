@@ -3,3 +3,7 @@ Build code under the folder src
 
 REQ 2
 For C classes generate H and C files
+
+REQ 3
+For python script maintain in the file top comments with sections: USAGE, REQUIREMENTS. 
+Requirements section fit for a potential script regeneration
