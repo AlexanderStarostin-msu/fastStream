@@ -15,6 +15,8 @@
 import argparse
 from pathlib import Path
 
+from utils.vtkTrajectories import add_trajectories
+
 import numpy as np
 import pyvista as pv
 
@@ -156,6 +158,9 @@ p.add_mesh(
     line_width=3,
     scalar_bar_args={"title": "Time of flight (s)"},
 )
+add_trajectories(p,"postProcessing/tracks.vtk",color="red")
+add_trajectories(p,"postProcessing/tracksZrmNoFlow.vtk",color="blue")
+
 plane_orientation = {
     "xy": ((0, 0, 1), (0, 1, 0)),
     "yx": ((0, 0, -1), (1, 0, 0)),
