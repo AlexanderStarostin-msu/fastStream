@@ -40,3 +40,4 @@ postProcessing/
 log*
 *.log
 
+__pycache__/

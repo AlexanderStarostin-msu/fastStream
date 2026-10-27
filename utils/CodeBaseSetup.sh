@@ -30,3 +30,10 @@ sudo apt install libptscotch-dev
 cd /workspaces/fastStream/OpenFOAM-10
 source etc/bashrc
 ./Allwmake
+
+#free space, remove unnecessary packages
+sudo apt remove llvm-18
+sudo apt autoremove
+
+sudo rm -rf /usr/local/sdkman
+sudo rm -rf /usr/share/dotnet
