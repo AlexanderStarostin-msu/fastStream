@@ -1,41 +1,41 @@
 REQ-NOFLOW-ZRM
-When the analysis dictionary contains a "ZermelloTrjNoFlow" block, the
+When the analysis dictionary contains a "ZermeloTrjNoFlow" block, the
 program shall generate no-flow device routes independently of the
 flow-following streamlines. In the first implementation, each route shall lie
 in a horizontal plane at the midpoint of finite, configured minHeight and
 maxHeight values. If variableHeight is enabled, the program shall use a 3D
 route constrained to that height range; until 3D routing is implemented, it
 shall reject this setting rather than silently use a 2D route.
-Implementation: 
-    Use the existing startPatches and destinationPatches settings.
+Implementation: Use the existing startPatches and destinationPatches settings.
 Intersect these boundary patches with the route plane. Sample start points
 along the start-patch intersections, weighted by segment length, using
-nPoints. Require an obstaclePatches list naming boundary patches whose
-intersection with the route plane forms closed obstacle footprints. Require a
-positive deviceRadius; allow an optional, non-negative obstacleMargin,
-defaulting to zero. Expand obstacle footprints by deviceRadius plus
-obstacleMargin. For each start point, find the nearest point on any reachable
-destination-patch intersection and route to it along the shortest
-collision-free piecewise-linear path around the expanded footprints, using a
-visibility graph. The route shall not depend on the flow velocity field.
+nPoints. Use the configured obstaclePatches boundary list, defaulting to the
+single patch "ground". The selected patches shall contain obstacle surfaces
+whose intersection with the route plane forms closed obstacle footprints.
+Require a positive deviceRadius; allow an optional, non-negative
+obstacleMargin, defaulting to zero. Expand obstacle footprints by
+deviceRadius plus obstacleMargin. For each start point, find the nearest point
+on any reachable destination-patch intersection and route to it along the
+shortest collision-free piecewise-linear path around the expanded footprints,
+using a visibility graph. The route shall not depend on the flow velocity
+field.
 Compute route length from its waypoints and travel time using deviceSpeed,
 defaulting to 0.1 m/s; configured speed shall be positive.
-    Write successful routes to output separate from streamline results, recording
+Write successful routes to output separate from streamline results, recording
 a stable route ID, start and end coordinates, waypoints, route length, and
 travel time. If no feasible route exists for a start, omit its route geometry
 and log the unreachable start. The 3D variable-height route algorithm is
 future work; enabling it before it is implemented shall produce a clear
 configuration error.
-
 Related classes:
-- ZermelloTrjGen is the abstract base class. It owns common
+- ZermeloTrjGen is the abstract base class. It owns common
   configuration and validation, route-space and obstacle preparation, patch
   intersection and start sampling, destination selection, shared result
   collection, travel-time calculation, and unreachable-start logging. It
   defines the generation workflow and an overridable route-building strategy.
-- ZermelloTrjNoFlow derives from the base and implements the 2D visibility-
+- ZermeloTrjNoFlow derives from the base and implements the 2D visibility-
   graph strategy for shortest collision-free routes in the fixed-height plane.
-- ZermelloTrjConstFlow (NO IMPLEMENTATION FOR INSTANCE) is a planned derived generator for a constant-flow
+- ZermeloTrjConstFlow (NO IMPLEMENTATION FOR INSTANCE) is a planned derived generator for a constant-flow
   route strategy. Its flow-dependent route behavior is not specified here.
-- ZermelloRouteWriter writes Zermello results separately from streamline
+- ZermeloRouteWriter writes Zermelo results separately from streamline
   output.

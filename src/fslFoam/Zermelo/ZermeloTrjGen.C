@@ -449,15 +449,13 @@ ZermeloTrjGen::ZermeloTrjGen
     );
     const wordList destinationPatches
     (
-        inputDict.lookupOrDefault<wordList>
-        (
+        inputDict.lookupOrDefault<wordList>(
             "destinationPatches",
             wordList(1, word("outlet"))
         )
     );
-    const wordList obstaclePatches
-    (
-        generatorDict.lookup("obstaclePatches")
+    const wordList obstaclePatches(
+        generatorDict.lookupOrDefault<wordList>("obstaclePatches",wordList(1, word("ground")))
     );
 
     if (startPatches.empty() || destinationPatches.empty())
