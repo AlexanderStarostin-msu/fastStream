@@ -50,19 +50,28 @@ The program shall constrain each evaluated device trajectory to a configured
 height range and enforce a configured minimum clearance from buildings, trees,
 and other obstacle geometry. A trajectory that leaves the height range or
 violates the clearance requirement shall not be considered feasible.
-Implementation: Configure the minimum and maximum heights and obstacle
-clearance for the scenario using "minHeight", "maxHeight",
-"minObstacleClearance", and "obstaclePatches" in fsStreamLineDict. Height is
-the z coordinate. The height limits default to unbounded and obstacle
-clearance defaults to zero, imposing no restriction. Check each point in the
-generated streamline against the configured limits; a positive clearance
-requires one or more named obstacle boundary patches. Report paths that
-violate a constraint as out_of_corridor. This flow-streamline application
-does not currently model stuck device motion.
-Classes involved: MotionCorridorConstraint checks height and obstacle
-clearance. StreamlineSummaryWriter applies it to each parsed track and reports
-the resulting outcome; scenario-specific trajectory evaluators remain future
-work.
+Implementation: Height is the z coordinate. For flow streamlines,
+"minHeight" and "maxHeight" in fsStreamLineDict may each be omitted, in which
+case that limit is unbounded; every configured limit shall be finite, and when
+both are configured minHeight shall be less or equal to maxHeight. Zermelo route
+generation shall require both finite limits. For flow streamlines, sample
+starting points from the portions of start patches inside the configured
+height band, weighted by clipped patch area. Continue integrating each
+streamline until its normal tracking termination, even when it leaves the
+height band. Retain the complete track in the summary and optional VTK output;
+classify the trajectory as out_of_corridor if any generated point violates
+the configured height or obstacle-clearance constraints.
+Construct Zermelo routes in the route space derived from the same settings.
+"minObstacleClearance" and "obstaclePatches" configure obstacle clearance,
+which defaults to zero; a positive clearance requires one or more named
+obstacle boundary patches. Report paths that violate a constraint as
+out_of_corridor. This flow-streamline application does not currently model
+stuck device motion.
+Classes involved: MotionCorridorConstraint checks every generated flow-track
+point against the height band and obstacle clearance. ZermeloTrjGen derives the
+Zermelo route space from the configured height settings. StreamlineSummaryWriter
+applies the streamline constraints to each parsed track and reports the
+resulting outcome; scenario-specific trajectory evaluators remain future work.
 
 REQ-GEN-OUTCOMES
 The program shall report trajectory outcomes, including destination
@@ -166,4 +175,3 @@ pill starting location.
 Classes involved: Not implemented; planned PillTrajectoryReporter. The
 current StreamlineSummaryWriter reports generic flow-streamline outcomes,
 not pill-specific stuck states.
-

@@ -3,6 +3,8 @@
 #include "error.H"
 #include "treeBoundBox.H"
 
+#include <cmath>
+
 namespace Foam
 {
 
@@ -79,13 +81,39 @@ MotionCorridorConstraint::MotionCorridorConstraint
     ),
     obstacleTreePtr_(nullptr)
 {
-    if (!(minHeight_ <= maxHeight_))
+    const bool hasMinHeight = inputDict.found("minHeight");
+    const bool hasMaxHeight = inputDict.found("maxHeight");
+
+    if
+    (
+        hasMinHeight
+     &&
+        (
+            !std::isfinite(minHeight_)
+         || minHeight_ <= -GREAT
+         || minHeight_ >= GREAT
+        )
+    )
     {
         FatalIOErrorInFunction(inputDict)
-            << "minHeight must be less than or equal to maxHeight"
+            << "minHeight must be finite"
             << exit(FatalIOError);
     }
 
+    if(hasMaxHeight && ( !std::isfinite(maxHeight_) || maxHeight_ <= -GREAT || maxHeight_ >= GREAT) )
+    {
+        FatalIOErrorInFunction(inputDict)
+            << "maxHeight must be finite"
+            << exit(FatalIOError);
+    }
+
+    if (hasMinHeight && hasMaxHeight && !(minHeight_ <= maxHeight_))
+    {
+        FatalIOErrorInFunction(inputDict)
+            << "minHeight must be less or equal to maxHeight"
+            << exit(FatalIOError);
+    }
+    maxHeight_ = max(maxHeight_, minHeight_+1e-6); // Ensure maxHeight >= minHeight
     if (!(minObstacleClearance_ >= 0))
     {
         FatalIOErrorInFunction(inputDict)
@@ -143,5 +171,4 @@ bool MotionCorridorConstraint::isAdmissible(const point& position) const
 
     return true;
 }
-
 }

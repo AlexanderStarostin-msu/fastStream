@@ -1,41 +1,83 @@
-REQ-NOFLOW-ZRM
-When the analysis dictionary contains a "ZermeloTrjNoFlow" block, the
-program shall generate no-flow device routes independently of the
-flow-following streamlines. In the first implementation, each route shall lie
-in a horizontal plane at the midpoint of finite, configured minHeight and
-maxHeight values. If variableHeight is enabled, the program shall use a 3D
-route constrained to that height range; until 3D routing is implemented, it
-shall reject this setting rather than silently use a 2D route.
-Implementation: Use the existing startPatches and destinationPatches settings.
-Intersect these boundary patches with the route plane. Sample start points
-along the start-patch intersections, weighted by segment length, using
-nPoints. Use the configured obstaclePatches boundary list, defaulting to the
-single patch "ground". The selected patches shall contain obstacle surfaces
-whose intersection with the route plane forms closed obstacle footprints.
-Require a positive deviceRadius; allow an optional, non-negative
-obstacleMargin, defaulting to zero. Expand obstacle footprints by
-deviceRadius plus obstacleMargin. For each start point, find the nearest point
-on any reachable destination-patch intersection and route to it along the
-shortest collision-free piecewise-linear path around the expanded footprints,
-using a visibility graph. The route shall not depend on the flow velocity
-field.
-Compute route length from its waypoints and travel time using deviceSpeed,
-defaulting to 0.1 m/s; configured speed shall be positive.
-Write successful routes to output separate from streamline results, recording
-a stable route ID, start and end coordinates, waypoints, route length, and
-travel time. If no feasible route exists for a start, omit its route geometry
-and log the unreachable start. The 3D variable-height route algorithm is
-future work; enabling it before it is implemented shall produce a clear
-configuration error.
-Related classes:
-- ZermeloTrjGen is the abstract base class. It owns common
-  configuration and validation, route-space and obstacle preparation, patch
-  intersection and start sampling, destination selection, shared result
-  collection, travel-time calculation, and unreachable-start logging. It
-  defines the generation workflow and an overridable route-building strategy.
-- ZermeloTrjNoFlow derives from the base and implements the 2D visibility-
-  graph strategy for shortest collision-free routes in the fixed-height plane.
-- ZermeloTrjConstFlow (NO IMPLEMENTATION FOR INSTANCE) is a planned derived generator for a constant-flow
-  route strategy. Its flow-dependent route behavior is not specified here.
-- ZermeloRouteWriter writes Zermelo results separately from streamline
-  output.
+REQ-ZRM-BASE
+When the analysis dictionary contains a configuration block derived from ZermeloTrjGen, the program shall execute a route-generation workflow.
+The workflow shall:
+-validate common route-generation configuration;
+-define the route space;
+-determine route start locations;
+-determine route destination locations;
+-prepare route obstacles;
+-invoke a route-construction strategy;
+-compute route metrics;
+-collect route results;
+-record unreachable starts;
+-provide route results to a route writer.
+Implementation
+ZermeloTrjGen shall:
+-own common configuration parsing and validation;
+-determine the route space from the common height-range settings;
+-read startPatches, destinationPatches, and obstaclePatches;
+-use ground as the default value for obstaclePatches;
+-allow an optional non-negative deviceRadius, defaulting to zero;
+-allow an optional non-negative obstacleMargin, defaulting to zero;
+-require a positive deviceSpeed when specified;
+-use 0.1 m/s as the default deviceSpeed;
+-compute intersections between the route space and the configured start, destination, and obstacle patches;
+-sample nPoints start locations from the start-patch intersections using segment-length weighting;
+-prepare obstacle representations expanded by deviceRadius + obstacleMargin;
+-select, for each start location, a destination location according to the generator strategy;
+-invoke a derived-class route-construction strategy for each start location;
+-compute route length from the route geometry returned by the derived strategy;
+-compute travel time from route length and deviceSpeed;
+-collect successful route results;
+-record unreachable start locations;
+-provide generated routes and associated metadata to the configured route writer.
+If variableHeight is enabled and the selected generator does not support variable-height routing, the program shall terminate with a configuration error.
+Related class
+ZermeloTrjGen
+
+REQ-ZRM-NOFLOW
+When the analysis dictionary contains a ZermeloTrjNoFlow block, the program shall generate routes without using flow-field information.
+The generated route shall not depend on velocity, pressure, turbulence, or any other flow-field quantity.
+Implementation
+ZermeloTrjNoFlow shall:
+-derive from ZermeloTrjGen;
+-generate routes in a horizontal plane located at the midpoint of minHeight and maxHeight;
+-use the start locations, destination locations, and obstacle representations prepared by ZermeloTrjGen;
+-construct a visibility graph using route endpoints and obstacle geometry;
+-determine the shortest collision-free piecewise-linear route between a start location and the selected destination location;
+-ensure that no route segment intersects an expanded obstacle;
+-return the route geometry to the base workflow for result processing;
+-report the route as unreachable when no collision-free path exists.
+Variable-height routing is outside the scope of this generator. If variableHeight is enabled, the generator shall terminate with a configuration error.
+Related class
+ZermeloTrjNoFlow : public ZermeloTrjGen
+
+REQ-NOFLOW-ZRM-ROUTE
+For each sampled start location, the program shall generate a collision-free route to the selected destination location.
+If no feasible route exists, the start location shall be reported as unreachable.
+Implementation
+For each sampled start location:
+-the generator shall use the fixed-height route plane defined by the base workflow;
+-the generator shall use the expanded obstacle footprints prepared by the base workflow;
+-the generator shall construct a visibility graph from obstacle vertices and route endpoints;
+-the generator shall determine the shortest collision-free piecewise-linear route from the start location to the selected destination location;
+-route segments shall not intersect expanded obstacle footprints;
+if no collision-free route exists, the generator shall report the start location as unreachable and shall not generate route geometry for that start.
+The route-generation algorithm shall be purely geometric and shall not depend on any flow-field quantity.
+Related class
+ZermeloTrjNoFlow
+
+REQ-NOFLOW-ZRM-OUTPUT
+The program shall write Zermelo route results separately from streamline results.
+Implementation
+For each successful route, the output shall contain:
+-a stable route identifier;
+-start coordinates;
+-end coordinates;
+-route waypoints;
+-route length;
+-travel time.
+For each unreachable start location, the output shall record the unreachable condition.
+Route output shall be produced through a dedicated Zermelo route writer.
+Related class
+ZermeloRouteWriter

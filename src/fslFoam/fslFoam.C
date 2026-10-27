@@ -10,10 +10,178 @@
 #include "Streamlines/StreamlineTrackData.H"
 #include "Streamlines/StreamlineVtkReader.H"
 
+#include "Random.H"
+
+#include <algorithm>
+#include <fstream>
+#include <vector>
+
 using namespace Foam;
 
 namespace
 {
+
+struct SeedTriangle
+{
+    point a;
+    point b;
+    point c;
+    scalar cumulativeArea;
+};
+
+
+std::vector<point> clipPolygon
+(
+    const std::vector<point>& polygon,
+    const scalar height,
+    const bool keepAbove
+)
+{
+    std::vector<point> clipped;
+    if (polygon.empty())
+    {
+        return clipped;
+    }
+
+    point previous = polygon.back();
+    bool previousInside =
+        keepAbove ? previous.z() >= height : previous.z() <= height;
+    for (std::size_t pointi = 0; pointi < polygon.size(); ++pointi)
+    {
+        const point& current = polygon[pointi];
+        const bool currentInside =
+            keepAbove ? current.z() >= height : current.z() <= height;
+        if (currentInside != previousInside)
+        {
+            const scalar fraction =
+                (height - previous.z())/(current.z() - previous.z());
+            clipped.push_back(previous + fraction*(current - previous));
+        }
+        if (currentInside)
+        {
+            clipped.push_back(current);
+        }
+        previous = current;
+        previousInside = currentInside;
+    }
+
+    return clipped;
+}
+
+
+pointField sampleHeightConstrainedSeeds
+(
+    const fvMesh& mesh,
+    const wordList& patchNames,
+    const label nPoints,
+    const scalar minHeight,
+    const scalar maxHeight,
+    const bool hasMinHeight,
+    const bool hasMaxHeight
+)
+{
+    std::vector<SeedTriangle> triangles;
+    scalar totalArea = 0;
+    // Keep sampled points inside the owner-cell tetrahedra for tracking.
+    const scalar inwardFraction = 1e-4;
+
+    forAll(patchNames, patchNamei)
+    {
+        const label patchi =
+            mesh.boundaryMesh().findPatchID(patchNames[patchNamei]);
+        const polyPatch& patch = mesh.boundaryMesh()[patchi];
+        forAll(patch, patchFacei)
+        {
+            const face& patchFace = patch[patchFacei];
+            const label facei = patchFacei + patch.start();
+            const point& cellCentre =
+                mesh.C()[mesh.faceOwner()[facei]];
+            for (label tetPti = 1; tetPti < patchFace.size() - 1; ++tetPti)
+            {
+                std::vector<point> polygon(3);
+                polygon[0] =
+                    (1 - inwardFraction)*mesh.points()[patchFace[0]]
+                  + inwardFraction*cellCentre;
+                polygon[1] =
+                    (1 - inwardFraction)*mesh.points()[patchFace[tetPti]]
+                  + inwardFraction*cellCentre;
+                polygon[2] =
+                    (1 - inwardFraction)*mesh.points()[patchFace[tetPti + 1]]
+                  + inwardFraction*cellCentre;
+
+                if (hasMinHeight)
+                {
+                    polygon = clipPolygon(polygon, minHeight, true);
+                }
+                if (hasMaxHeight)
+                {
+                    polygon = clipPolygon(polygon, maxHeight, false);
+                }
+                if (polygon.size() < 3)
+                {
+                    continue;
+                }
+
+                for
+                (
+                    std::size_t pointi = 1;
+                    pointi + 1 < polygon.size();
+                    ++pointi
+                )
+                {
+                    const point& a = polygon[0];
+                    const point& b = polygon[pointi];
+                    const point& c = polygon[pointi + 1];
+                    const scalar area = 0.5*mag((b - a) ^ (c - a));
+                    if (area > VSMALL)
+                    {
+                        totalArea += area;
+                        triangles.push_back
+                        (
+                            SeedTriangle{a, b, c, totalArea}
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    if (triangles.empty() || !(totalArea > VSMALL))
+    {
+        FatalErrorInFunction
+            << "The configured start patches have no area within the height "
+            << "range" << exit(FatalError);
+    }
+
+    Random random(261782);
+    pointField seeds(nPoints);
+    forAll(seeds, pointi)
+    {
+        const scalar selection = random.scalar01()*totalArea;
+        const std::vector<SeedTriangle>::const_iterator triangle =
+            std::lower_bound
+            (
+                triangles.begin(),
+                triangles.end(),
+                selection,
+                [](const SeedTriangle& candidate, const scalar value)
+                {
+                    return candidate.cumulativeArea < value;
+                }
+            );
+        const SeedTriangle& selected =
+            triangle == triangles.end() ? triangles.back() : *triangle;
+        const scalar root = Foam::sqrt(random.scalar01());
+        const scalar fraction = random.scalar01();
+        seeds[pointi] =
+            (1 - root)*selected.a
+          + root*(1 - fraction)*selected.b
+          + root*fraction*selected.c;
+    }
+
+    return seeds;
+}
+
 
 void validatePatches
 (
@@ -217,6 +385,9 @@ int main(int argc, char *argv[])
         inputDict.lookupOrDefault<label>("nSubCycle", 5);
     const Switch outputStreamLines =
         inputDict.lookupOrDefault<Switch>("outputStreamLines", false);
+    const bool hasMinHeight = inputDict.found("minHeight");
+    const bool hasMaxHeight = inputDict.found("maxHeight");
+    const bool heightLimited = hasMinHeight || hasMaxHeight;
 
     if (nPoints < 1 || lifeTime < 1 || nSubCycle < 1)
     {
@@ -235,7 +406,7 @@ int main(int argc, char *argv[])
     }
         
     //too detailed const fileName finalOutput(outputBase/targetCase.name()/timeDirs[latestTimeIndex].name();
-    const fileName finalOutput(outputBase/targetCase.name());
+    const fileName finalOutput(outputBase);
 
     if (!isDir(finalOutput) && !mkDir(finalOutput)){
         FatalErrorInFunction
@@ -324,6 +495,8 @@ int main(int argc, char *argv[])
             "destination"
         );
 
+        MotionCorridorConstraint corridorConstraint(mesh, inputDict);
+
         if (inputDict.found("ZermeloTrjNoFlow"))
         {
             const dictionary& zermeloDict =
@@ -337,13 +510,32 @@ int main(int argc, char *argv[])
             );
         }
 
-        MotionCorridorConstraint corridorConstraint(mesh, inputDict);
-
         dictionary seedSampleSet;
-        seedSampleSet.add("type", word("boundaryRandom"));
-        seedSampleSet.add("patches", startPatches);
-        seedSampleSet.add("nPoints", nPoints);
-        seedSampleSet.add("axis", word("xyz"));
+        if (heightLimited)
+        {
+            const pointField seeds =
+                sampleHeightConstrainedSeeds
+                (
+                    mesh,
+                    startPatches,
+                    nPoints,
+                    inputDict.lookupOrDefault<scalar>("minHeight", -GREAT),
+                    inputDict.lookupOrDefault<scalar>("maxHeight", GREAT),
+                    hasMinHeight,
+                    hasMaxHeight
+                );
+            seedSampleSet.add("type", word("points"));
+            seedSampleSet.add("points", seeds);
+            seedSampleSet.add("ordered", Switch(false));
+            seedSampleSet.add("axis", word("xyz"));
+        }
+        else
+        {
+            seedSampleSet.add("type", word("boundaryRandom"));
+            seedSampleSet.add("patches", startPatches);
+            seedSampleSet.add("nPoints", nPoints);
+            seedSampleSet.add("axis", word("xyz"));
+        }
 
         dictionary streamlinesDict;
         streamlinesDict.add("fields", wordList(1, word("U")));

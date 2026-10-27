@@ -407,17 +407,16 @@ ZermeloTrjGen::ZermeloTrjGen
     inputDict.lookup("maxHeight") >> maxHeight;
     if
     (
-        !std::isfinite(minHeight)
-     || !std::isfinite(maxHeight)
-     || minHeight <= -GREAT
-     || maxHeight >= GREAT
-     || minHeight > maxHeight
+        !std::isfinite(minHeight) || !std::isfinite(maxHeight)
+     || minHeight <= -GREAT || minHeight >= GREAT || minHeight > maxHeight
+     || maxHeight <= -GREAT || maxHeight >= GREAT  
     )
     {
         FatalIOErrorInFunction(inputDict)
             << "Zermelo requires finite minHeight <= maxHeight"
             << exit(FatalIOError);
     }
+    maxHeight = max(maxHeight, minHeight+1e-6); // Ensure maxHeight >= minHeight
     routeHeight_ = 0.5*(minHeight + maxHeight);
 
     if (!(deviceRadius_ > 0) || !std::isfinite(deviceRadius_))
