@@ -19,8 +19,9 @@ destinationPatches  (outlet);
 minHeight           5;
 maxHeight           25;
 
-// Preview-only buffer used by plotGridSlice.py around STL building footprints.
-visualizationClearance 10;
+// Shared solver and grid-slice minimum clearance from obstacle surfaces.
+minObstacleClearance 5;
+obstaclePatches        (ground);
 
 // Number of area-weighted seed points over the selected start patches.
 nPoints             100;
@@ -29,14 +30,12 @@ nSubCycle           5;
 
 outputStreamLines on;
 
-// obstaclePatches defaults to (ground). Regenerate the mesh using
-// snappyHexMeshDict so building walls are included in the ground patch.
+// Regenerate the mesh using snappyHexMeshDict so building walls are included
+// in the ground obstacle patch.
 // Zermelo uses the shared nPoints value above; lifeTime and nSubCycle apply
 // only to flow streamline integration.
-// ZermeloTrjNoFlow
-// {
-//      deviceRadius        0.5;
-//      obstacleMargin      0.5;
-//      deviceSpeed         0.1;
-//      variableHeight      false;
-// }
+ZermeloTrjNoFlow
+{
+     deviceSpeed         0.1;
+     variableHeight      false;
+}

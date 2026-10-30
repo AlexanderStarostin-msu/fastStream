@@ -15,15 +15,16 @@ Implementation
 ZermeloTrjGen shall:
 -own common configuration parsing and validation;
 -determine the route space from the common height-range settings;
--read startPatches, destinationPatches, and obstaclePatches;
+-read startPatches, destinationPatches, and the common obstaclePatches;
 -use ground as the default value for obstaclePatches;
--allow an optional non-negative deviceRadius, defaulting to zero;
--allow an optional non-negative obstacleMargin, defaulting to zero;
+-use the common non-negative minObstacleClearance from fsStreamLineDict,
+ defaulting to zero;
+-accept zero clearance as disabling obstacle expansion;
 -require a positive deviceSpeed when specified;
 -use 0.1 m/s as the default deviceSpeed;
 -compute intersections between the route space and the configured start, destination, and obstacle patches;
 -sample nPoints start locations from the start-patch intersections using segment-length weighting;
--prepare obstacle representations expanded by deviceRadius + obstacleMargin;
+-prepare obstacle representations expanded by minObstacleClearance;
 -select, for each start location, a destination location according to the generator strategy;
 -invoke a derived-class route-construction strategy for each start location;
 -compute route length from the route geometry returned by the derived strategy;

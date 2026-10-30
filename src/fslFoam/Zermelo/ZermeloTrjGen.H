@@ -24,8 +24,7 @@ public:
 protected:
     const fvMesh& mesh_;
     scalar routeHeight_;
-    scalar deviceRadius_;
-    scalar obstacleMargin_;
+    scalar minObstacleClearance_;
     scalar deviceSpeed_;
     scalar geometryTolerance_;
     std::vector<Segment2> startSegments_;

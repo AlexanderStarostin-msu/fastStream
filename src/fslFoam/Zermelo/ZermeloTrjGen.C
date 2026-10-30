@@ -364,13 +364,9 @@ ZermeloTrjGen::ZermeloTrjGen
 :
     mesh_(mesh),
     routeHeight_(0),
-    deviceRadius_
+    minObstacleClearance_
     (
-        generatorDict.lookupOrDefault<scalar>("deviceRadius", -1)
-    ),
-    obstacleMargin_
-    (
-        generatorDict.lookupOrDefault<scalar>("obstacleMargin", 0)
+        inputDict.lookupOrDefault<scalar>("minObstacleClearance", 0)
     ),
     deviceSpeed_
     (
@@ -419,16 +415,10 @@ ZermeloTrjGen::ZermeloTrjGen
     maxHeight = max(maxHeight, minHeight+1e-6); // Ensure maxHeight >= minHeight
     routeHeight_ = 0.5*(minHeight + maxHeight);
 
-    if (!(deviceRadius_ > 0) || !std::isfinite(deviceRadius_))
+    if (!(minObstacleClearance_ >= 0) || !std::isfinite(minObstacleClearance_))
     {
-        FatalIOErrorInFunction(generatorDict)
-            << "deviceRadius must be positive and finite"
-            << exit(FatalIOError);
-    }
-    if (!(obstacleMargin_ >= 0) || !std::isfinite(obstacleMargin_))
-    {
-        FatalIOErrorInFunction(generatorDict)
-            << "obstacleMargin must be non-negative and finite"
+        FatalIOErrorInFunction(inputDict)
+            << "minObstacleClearance must be non-negative and finite"
             << exit(FatalIOError);
     }
     if (!(deviceSpeed_ > 0) || !std::isfinite(deviceSpeed_))
@@ -453,8 +443,13 @@ ZermeloTrjGen::ZermeloTrjGen
             wordList(1, word("outlet"))
         )
     );
-    const wordList obstaclePatches(
-        generatorDict.lookupOrDefault<wordList>("obstaclePatches",wordList(1, word("ground")))
+    const wordList obstaclePatches
+    (
+        inputDict.lookupOrDefault<wordList>
+        (
+            "obstaclePatches",
+            wordList(1, word("ground"))
+        )
     );
 
     if (startPatches.empty() || destinationPatches.empty())
@@ -511,10 +506,9 @@ ZermeloTrjGen::~ZermeloTrjGen()
 
 void ZermeloTrjGen::prepareObstacles()
 {
-    const scalar clearance = deviceRadius_ + obstacleMargin_;
     const bg::strategy::buffer::distance_symmetric<scalar> distanceStrategy
     (
-        clearance
+        minObstacleClearance_
     );
     const bg::strategy::buffer::side_straight sideStrategy;
     const bg::strategy::buffer::join_round joinStrategy(16);
@@ -528,6 +522,12 @@ void ZermeloTrjGen::prepareObstacles()
         ++polyi
     )
     {
+        if (minObstacleClearance_ == 0)
+        {
+            bufferedObstacles_.push_back(obstacleFootprints_[polyi]);
+            continue;
+        }
+
         bg::model::multi_polygon<Polygon2> buffered;
         bg::buffer
         (
@@ -651,34 +651,7 @@ bool ZermeloTrjGen::segmentIsClear
 
         if (bg::intersects(Segment2(start, end), bufferedObstacles_[polyi]))
         {
-            const scalar segmentLength = bg::distance(start, end);
-            const scalar sampleStep = max
-            (
-                geometryTolerance_*10,
-                deviceRadius_*0.25
-            );
-            const label sampleCount =
-                max(label(2), label(ceil(segmentLength/sampleStep)));
-            bool interiorCrossing = false;
-            for (label samplei = 1; samplei < sampleCount; ++samplei)
-            {
-                const scalar fraction =
-                    scalar(samplei)/sampleCount;
-                const Point2 sample
-                (
-                    start.x() + fraction*(end.x() - start.x()),
-                    start.y() + fraction*(end.y() - start.y())
-                );
-                if (bg::within(sample, bufferedObstacles_[polyi]))
-                {
-                    interiorCrossing = true;
-                    break;
-                }
-            }
-            if (interiorCrossing)
-            {
-                return false;
-            }
+            return false;
         }
     }
     return true;

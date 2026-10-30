@@ -64,8 +64,10 @@ the configured height or obstacle-clearance constraints.
 Construct Zermelo routes in the route space derived from the same settings.
 "minObstacleClearance" and "obstaclePatches" configure obstacle clearance,
 which defaults to zero; a positive clearance requires one or more named
-obstacle boundary patches. Report paths that violate a constraint as
-out_of_corridor. This flow-streamline application does not currently model
+obstacle boundary patches. The configured minimum clearance shall be shared
+by flow-streamline checks, Zermelo route planning, and the grid-slice preview.
+Report paths that violate a constraint as out_of_corridor. This
+flow-streamline application does not currently model
 stuck device motion.
 Classes involved: MotionCorridorConstraint checks every generated flow-track
 point against the height band and obstacle clearance. ZermeloTrjGen derives the
@@ -111,7 +113,12 @@ functionObjects::streamlines; there is no scenario-specific class.
 
 REQ-DRONE-CITY-GEOMETRY
 The program shall support city-building geometry harvested from open sources.
-Classes involved: Not implemented; no geometry-import class exists yet.
+Implementation: Convert building footprints to watertight STL solids, refine
+the CFD mesh around the buildings, preserve sufficient numeric precision when
+writing meshes with projected coordinates, and validate the generated mesh
+before running the flow solver.
+Classes involved: gpkg2stl.py converts building footprints to STL;
+snappyHexMeshDict configures building and volume refinement.
 
 REQ-DRONE-CONTROL-MODEL
 The program shall model the drone using a control model.

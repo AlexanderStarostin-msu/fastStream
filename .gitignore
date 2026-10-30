@@ -12,7 +12,9 @@ src/**/Make/linux*
 test/**/postProcessing
 test/**/constant/polyMesh
 test/**/*.vtk
-test/**/*.stl
+#test/**/*.stl
+test/**/*.png
+test/**/*.obj
 test/**/*.extendedFeatureEdgeMesh
 test/**/*.eMesh
 test/**/badFaces

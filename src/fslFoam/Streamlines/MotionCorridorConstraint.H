@@ -1,7 +1,6 @@
 #ifndef MotionCorridorConstraint_H
 #define MotionCorridorConstraint_H
 
-#include "StreamlineTrackData.H"
 #include "dictionary.H"
 #include "fvMesh.H"
 #include "indirectPrimitivePatch.H"
