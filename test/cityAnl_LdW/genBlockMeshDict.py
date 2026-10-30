@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
+"""Generate a blockMeshDict sized around the city building geometry.
 
-import trimesh
-import numpy as np
+USAGE:
+    python3 genBlockMeshDict.py
+
+REQUIREMENTS:
+    Run from the cityAnl_LdW case directory with trimesh installed and
+    constant/geometry/LdW.stl already generated. The script writes
+    system/blockMeshDict, keeping the city geometry centered in the CFD domain.
+"""
+
 from pathlib import Path
 
-mesh = trimesh.load("LdW.stl")
+import trimesh
+
+mesh = trimesh.load("constant/geometry/LdW.stl")
 
 xmin, ymin, zmin = mesh.bounds[0]
 xmax, ymax, zmax = mesh.bounds[1]
@@ -33,9 +43,9 @@ print(x0, x1)
 print(y0, y1)
 print(z0, z1)
 
-nx = 120
-ny = 120
-nz = 60
+nx = 80
+ny = 80
+nz = 40
 
 Path("system").mkdir(exist_ok=True)
 
@@ -102,7 +112,7 @@ boundary
 
     top
     {{
-        type symmetryPlane;
+        type symmetry;
         faces ((4 5 6 7));
     }}
 

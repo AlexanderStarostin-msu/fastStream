@@ -14,29 +14,29 @@ dimensions      [0 2 -3 0 0 0 0];
 internalField   uniform 0.000004;
 boundaryField
 {
-    // Updated by bndFromMap.py at 2026-10-26T23:25:17Z (UTC)
-                ground
-        {
-            type epsilonWallFunction;     value uniform 0.000004;
-        }
+    // Updated by bndFromMap.py at 2026-10-30T21:43:11Z (UTC)
+    ground
+    {
+        type epsilonWallFunction;     value uniform 0.000004;
+    }
 
-                inlet
-        {
-            type fixedValue;    value uniform 0.000004;
-        }
+    inlet
+    {
+        type fixedValue;    value uniform 0.000004;
+    }
 
-                outlet
-        {
-            type fixedValue;    value uniform 0.000004;
-        }
+    outlet
+    {
+        type zeroGradient;
+    }
 
-                sides
-        {
-            type fixedValue;    value uniform 0.000004;
-        }
+    sides
+    {
+        type symmetry;
+    }
 
-                top
-        {
-            type symmetryPlane;
-        }
+    top
+    {
+        type symmetry;
+    }
 }

@@ -15,6 +15,13 @@ geometry
         type triSurfaceMesh;
         name ground;
     }
+
+    refinementBox
+    {
+        type searchableBox;
+        min (487700 5876075 0);
+        max (488550 5876650 80);
+    }
 }
 
 castellatedMesh true;
@@ -23,8 +30,8 @@ addLayers false;
 
 castellatedMeshControls
 {
-    maxLocalCells  10000;
-    maxGlobalCells 100000;
+    maxLocalCells  1000000;
+    maxGlobalCells 3000000;
     minRefinementCells 10;
     nCellsBetweenLevels 3;
     resolveFeatureAngle 30;
@@ -43,6 +50,15 @@ castellatedMeshControls
         ground
         {
             level (2 3);
+        }
+    }
+
+    refinementRegions
+    {
+        refinementBox
+        {
+            mode inside;
+            level 1;
         }
     }
 

@@ -264,13 +264,11 @@ def update_field_file(path, field_name, patch_conditions):
             continue
 
         line_start = text.rfind("\n", 0, patch.start) + 1
-        prefix = text[line_start:patch.start]
-        indent = len(prefix) - len(prefix.lstrip(" \t"))
         edits.append(
             (
-                patch.start,
+                line_start,
                 patch.end,
-                format_boundary_entry(patch_name, condition, indent),
+                format_boundary_entry(patch_name, condition, 4),
             )
         )
 

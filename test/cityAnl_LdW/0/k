@@ -11,32 +11,32 @@ FoamFile
     object      k;
 }
 dimensions      [0 2 -2 0 0 0 0];
-internalField   uniform 0;
+internalField   uniform 0.00375;
 boundaryField
 {
-    // Updated by bndFromMap.py at 2026-10-26T23:25:17Z (UTC)
-                ground
-        {
-            type kqRWallFunction;        value uniform 0.00375;
-        }
+    // Updated by bndFromMap.py at 2026-10-30T21:43:11Z (UTC)
+    ground
+    {
+        type kqRWallFunction;        value uniform 0.00375;
+    }
 
-                inlet
-        {
-            type fixedValue;        value uniform 0.00375;
-        }
+    inlet
+    {
+        type fixedValue;        value uniform 0.00375;
+    }
 
-                outlet
-        {
-            type fixedValue;  value uniform 0.00375;
-        }
+    outlet
+    {
+        type zeroGradient;
+    }
 
-                sides
-        {
-            type fixedValue;        value uniform 0.00375;
-        }
+    sides
+    {
+        type symmetry;
+    }
 
-                top
-        {
-            type symmetryPlane;
-        }
+    top
+    {
+        type symmetry;
+    }
 }

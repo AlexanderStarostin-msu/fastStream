@@ -2,7 +2,7 @@ pi              3.1415926535897932384626;
 
 // wind direction angle from north
 beta_deg        0.001;                      // in degrees
-U               0.01;
+U               1.0;
 
 // calculated parameters
 beta            #calc "($beta_deg*($pi)/180.0)";  // in radians

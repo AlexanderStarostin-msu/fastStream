@@ -14,29 +14,29 @@ dimensions      [0 2 -2 0 0 0 0];
 internalField   uniform 0;
 boundaryField
 {
-    // Updated by bndFromMap.py at 2026-10-26T23:25:17Z (UTC)
-                ground
-        {
-            type zeroGradient;
-        }
+    // Updated by bndFromMap.py at 2026-10-30T21:43:11Z (UTC)
+    ground
+    {
+        type zeroGradient;
+    }
 
-                inlet
-        {
-            type zeroGradient;
-        }
+    inlet
+    {
+        type zeroGradient;
+    }
 
-                outlet
-        {
-            type totalPressure;  p0 uniform 0;  value uniform 0;
-        }
+    outlet
+    {
+        type totalPressure;  p0 uniform 0;  value uniform 0;
+    }
 
-                sides
-        {
-            type zeroGradient;
-        }
+    sides
+    {
+        type symmetry;
+    }
 
-                top
-        {
-            type symmetryPlane;
-        }
+    top
+    {
+        type symmetry;
+    }
 }

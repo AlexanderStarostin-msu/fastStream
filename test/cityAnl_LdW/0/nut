@@ -14,29 +14,29 @@ dimensions      [0 2 -1 0 0 0 0];
 internalField   uniform 0;
 boundaryField
 {
-    // Updated by bndFromMap.py at 2026-10-26T23:25:17Z (UTC)
-                ground
-        {
-            type nutkWallFunction;        value uniform 0;
-        }
+    // Updated by bndFromMap.py at 2026-10-30T21:43:11Z (UTC)
+    ground
+    {
+        type nutkWallFunction;        value uniform 0;
+    }
 
-                inlet
-        {
-            type calculated;      value uniform 0;
-        }
+    inlet
+    {
+        type calculated;      value uniform 0;
+    }
 
-                outlet
-        {
-            type calculated;      value uniform 0;
-        }
+    outlet
+    {
+        type zeroGradient;
+    }
 
-                sides
-        {
-            type calculated;      value uniform 0;
-        }
+    sides
+    {
+        type symmetry;
+    }
 
-                top
-        {
-            type symmetryPlane;
-        }
+    top
+    {
+        type symmetry;
+    }
 }

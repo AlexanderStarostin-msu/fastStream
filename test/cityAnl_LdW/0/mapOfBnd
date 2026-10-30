@@ -10,24 +10,24 @@ inlet:
 outlet:
     U:  type zeroGradient;
     p:  type totalPressure;  p0 uniform 0;  value uniform 0;
-    k:  type fixedValue;  value uniform 0.00375;
-    epsilon:    type fixedValue;    value uniform 0.000004;
-    omega:      type fixedValue;    value uniform 1.0;
-    nut:        type calculated;      value uniform 0;
+    k:  type zeroGradient;
+    epsilon:    type zeroGradient;
+    omega:      type zeroGradient;
+    nut:        type zeroGradient;
 sides:
-    U:  type zeroGradient;
-    p:  type zeroGradient;
-    k:  type fixedValue;        value uniform 0.00375;
-    epsilon:    type fixedValue;    value uniform 0.000004;
-    omega:      type fixedValue;    value uniform 1.0;
-    nut:        type calculated;      value uniform 0;
+    U:   type symmetry;
+    p:   type symmetry;
+    k:   type symmetry;
+    epsilon:      type symmetry;
+    omega:        type symmetry;
+    nut:          type symmetry;
 top:
-    U:   type symmetryPlane;
-    p:   type symmetryPlane;
-    k:   type symmetryPlane;
-    epsilon:      type symmetryPlane;
-    omega:        type symmetryPlane;
-    nut:          type symmetryPlane;
+    U:   type symmetry;
+    p:   type symmetry;
+    k:   type symmetry;
+    epsilon:      type symmetry;
+    omega:        type symmetry;
+    nut:          type symmetry;
 ground:
     U:    type noSlip;
     p:    type zeroGradient;

@@ -1,31 +1,59 @@
+#!/bin/sh
+set -eu
+
+cd "$(dirname "$0")"
+
 if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != "--nomesh" ]; }; then
     echo "Usage: $0 [--nomesh]" >&2
     exit 2
 fi
 
 if [ "$#" -eq 0 ]; then
-    mv LdW.stl constant/geometry/
-    echo "Stl file moved to constant/geometry/"
-    surfaceCheck constant/geometry/LdW.stl
-    rm LdW*.obj
+    ../../utils/gpkg2stl.py LdW.gpkg constant/geometry/LdW.stl
+    surfaceCheck -checkSelfIntersection constant/geometry/LdW.stl \
+        > log.surfaceCheck 2>&1
+    if grep -Eq 'Surface is not closed|Surface is self-intersecting' \
+        log.surfaceCheck; then
+        cat log.surfaceCheck >&2
+        echo "Generated building surface is not suitable for snappyHexMesh" >&2
+        exit 1
+    fi
 
-    surfaceFeatures
-
-    python makeCase.py
-
+    surfaceFeatures > log.surfaceFeatures 2>&1
+    python3 genBlockMeshDict.py > log.genBlockMeshDict
     blockMesh > log.blockMesh
-
-    snappyHexMesh -overwrite
-
-    checkMesh > log.checkMesh
+    snappyHexMesh -overwrite > log.snappyHexMesh 2>&1
+    if ! grep -Eq 'Selected for internal refinement : [1-9][0-9]* cells' \
+        log.snappyHexMesh; then
+        cat log.snappyHexMesh >&2
+        echo "snappyHexMesh did not refine cells inside the city region" >&2
+        exit 1
+    fi
+    if ! checkMesh -allTopology -allGeometry > log.checkMesh 2>&1; then
+        cat log.checkMesh >&2
+        echo "checkMesh could not validate the city mesh" >&2
+        exit 1
+    fi
+    if grep -Eq 'Zero or negative (face area|cell volume) detected' \
+        log.checkMesh; then
+        cat log.checkMesh >&2
+        echo "checkMesh found invalid city mesh geometry" >&2
+        exit 1
+    fi
+    if grep -Eq 'Failed [1-9][0-9]* mesh checks' log.checkMesh; then
+        echo "checkMesh reported mesh-quality warnings; see log.checkMesh" >&2
+    fi
 fi
 
 simpleFoam > log.simpleFoam
 
 foamToVTK -latestTime > log.foamToVTK
-../../utils/vizStreamLines.py "./" xy > log.vizStreamLines 2>&1 && rm log.vizStreamLines
+
+../../utils/plotGridSlice.py
 
 fslFoam > log.fslFoam
+
+../../utils/vizStreamLines.py "./" xy > log.vizStreamLines 2>&1 && rm log.vizStreamLines
 
 refOFCase=LdW
 mv $refOFCase.png ./postProcessing/$refOFCase/
