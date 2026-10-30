@@ -33,7 +33,11 @@ source etc/bashrc
 
 #free space, remove unnecessary packages
 sudo apt remove llvm-18
-sudo apt autoremove
+sudo apt remove libspatialite-dev sqlite3
+sudo apt autoremove -y
 
 sudo rm -rf /usr/local/sdkman
 sudo rm -rf /usr/share/dotnet
+
+sudo apt-get update
+sudo apt-get install libboost-dev
