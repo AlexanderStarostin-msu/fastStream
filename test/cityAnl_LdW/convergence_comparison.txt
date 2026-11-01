@@ -1,0 +1,103 @@
+Comparison: cityAnl_LdW vs windAroundBuildings
+==============================================
+
+Conclusion
+----------
+The solver logs do not support the claim that windAroundBuildings has better
+overall SIMPLE residual convergence. At matched iterations 118 and 200,
+cityAnl_LdW has lower pressure residuals and much smaller continuity errors.
+Some velocity components are lower in the wind case, so no single field tells
+the whole story.
+
+The wind case can still look cleaner or more stable in results. The strongest
+evidence for a possible cause is mesh quality: the current city mesh fails two
+checkMesh quality checks, while its older snappyHexMesh log aborted during
+refinement. The wind snappyHexMesh log reports successful meshing and no
+failures for the quality limits it checks. The outlet boundary conditions also
+differ and may matter if there is reverse flow. These are plausible causes of
+differences in the solution, not proof that they caused the observed residuals.
+
+Measured solver-log values
+--------------------------
+Values below are the per-iteration initial residuals reported by simpleFoam.
+
+                                   cityAnl_LdW       windAroundBuildings
+simpleFoam log date                Oct 30 2026       Oct 27 2026
+Iterations completed               200               400
+Clock time at iteration 118        348 s             87 s
+Clock time at iteration 200        597 s             148 s
+Clock time at final iteration      597 s             290 s
+
+At iteration 118:
+  p residual                        0.0129649         0.0402112
+  Ux residual                       0.000728899       0.0014945
+  Uy residual                       0.00839087        0.00559026
+  Uz residual                       0.00531691        0.00575904
+  k residual                        0.00148234        0.00370519
+  epsilon residual                  0.000663477       0.00344184
+  local continuity error            7.83e-8           3.40e-5
+  cumulative continuity error       -1.26e-6          1.15e-4
+
+At iteration 200:
+  p residual                        0.00418093        0.0141692
+  Ux residual                       0.000141709       0.000416903
+  Uy residual                       0.00207041        0.00163825
+  Uz residual                       0.00114082        0.0017355
+  k residual                        0.000467967       0.00214664
+  epsilon residual                  0.000452008       0.00289899
+  local continuity error            2.59e-8           1.07e-5
+  cumulative continuity error       -1.27e-6          6.70e-5
+
+At their respective final iterations, p residual is 0.00418093 for city
+(iteration 200) and 0.0131907 for wind (iteration 400). Comparing only the
+last iteration of each run is not an equal-duration comparison, but wind's
+extra 200 iterations did not bring its p residual below the city's at
+iteration 200.
+
+Why apparent convergence/performance can differ
+------------------------------------------------
+* The runs have different lengths because controlDict sets endTime to 200 for
+  city and 400 for wind. Both logs end normally at that limit; neither stopped
+  because it met the configured 1e-4 residualControl targets. The logs are
+  therefore not evidence that the wind case converged sooner.
+* Wind is substantially cheaper per iteration: about 0.725 s/iteration by
+  clock time, versus 2.985 s/iteration for city. The current city mesh has
+  600,363 cells; the wind snappyHexMesh log reports 185,237 cells. This
+  roughly 3.2x cell-count difference accounts for much of the runtime
+  difference, though it does not by itself prove the full cause.
+* A checkMesh run on the city mesh currently on disk (Oct 31) found 600,363
+  cells, maximum skewness 7.22086 with 195 highly skewed faces, and 33,444
+  concave cells. It reported "Failed 2 mesh checks." Topology and cell volumes
+  passed. The wind snappyHexMesh log (Oct 27) reports successful meshing and
+  zero faces beyond its listed skewness, non-orthogonality, and other limits;
+  that log is not a fresh checkMesh run on the current wind mesh.
+* The city snappyHexMesh log is older (Oct 27) and ends with a fatal error
+  during shell refinement. The city polyMesh files currently on disk were
+  modified Oct 30, before the Oct 30 simpleFoam run. Treat that old failed
+  meshing attempt and the newer solver run as separate evidence.
+* Both current cases use simpleFoam, RAS kEpsilon, nu = 1.5e-5, the same
+  fvSchemes pattern, and 1e-4 residualControl targets. Current pressure
+  relaxation differs: 0.6 for city and 0.3 for wind; U and turbulence
+  equation relaxation are 0.7 in both.
+* Inlet scales differ substantially: city U = 1 m/s, k = 0.00375,
+  epsilon = 0.000004; wind U = 10 m/s, k = 1.5, epsilon = 0.03. These
+  normalized residual histories are not a controlled comparison of physical
+  solution error across the two different flow setups.
+* Outlet U, k, and epsilon are zeroGradient in city. Wind uses
+  pressureInletOutletVelocity for U and inletOutlet for k and epsilon, which
+  accommodates reverse flow. This is worth investigating only if city has
+  reverse outlet flux; the logs here do not establish that it does.
+
+Recommended next checks
+-----------------------
+1. Fix/regenerate the city mesh and require current checkMesh results to pass
+   the intended quality criteria. Confirm a fresh snappyHexMesh run completes.
+2. Then rerun both cases with saved dictionaries, comparable iteration limits,
+   and the same residual/continuity reporting. Compare all fields, not just p.
+3. Check outlet flux for reverse flow before changing city outlet conditions.
+
+Do not infer that wind has better overall solver convergence from smoother
+plots or shorter runtime. The current logs show cheaper iterations for wind,
+but lower pressure residuals and continuity errors for city at matched
+iterations; the cases also differ in mesh quality, boundary conditions, and
+inlet/turbulence scales.
