@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/cpp:ubuntu-22.04
+FROM mcr.microsoft.com/devcontainers/cpp:ubuntu-24.04
 
 # Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive

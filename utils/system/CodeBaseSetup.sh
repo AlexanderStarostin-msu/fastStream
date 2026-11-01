@@ -1,5 +1,9 @@
 #Start with the vanila blank Codebade VM
 
+logDpd=log.dependenciesInstall
+echo "Before installing dependencies" > $logDpd
+df -h >> $logDpd
+
 #python wheel for vtk
 pip install pyvista vtk
 
@@ -41,3 +45,6 @@ sudo rm -rf /usr/share/dotnet
 
 sudo apt-get update
 sudo apt-get install libboost-dev
+
+echo "After installing dependencies" >> $logDpd
+df -h >> $logDpd

@@ -20,12 +20,13 @@
         "twxs.cmake"
       ],
       "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
         "python.defaultInterpreterPath": "/usr/local/bin/python",
         "C_Cpp.intelliSenseEngine": "disabled",
         "clangd.path": "clangd"
       }
     }
   },
-  "postCreateCommand": "pip install numpy scipy matplotlib pyfoam && echo 'source /workspaces/fastStream/OpenFOAM-10/etc/bashrc' >> ~/.bashrc",
+  "postCreateCommand": "pip install numpy scipy matplotlib pyfoam && echo 'source /workspaces/OpenFOAM-10/etc/bashrc' >> ~/.bashrc",
   "remoteUser": "vscode"
 }
