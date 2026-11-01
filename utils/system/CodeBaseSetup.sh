@@ -4,6 +4,9 @@ logDpd=log.dependenciesInstall
 echo "Before installing dependencies" > $logDpd
 df -h >> $logDpd
 
+#remove pre-push hook to avoid errors when pushing to remote repo
+rm -f .git/hooks/pre-push
+
 #python wheel for vtk
 pip install pyvista vtk
 
@@ -29,6 +32,10 @@ sudo apt install -y openmpi-bin libopenmpi-dev
 #scotch
 sudo apt install libscotch-dev
 sudo apt install libptscotch-dev
+#simlinks for OpenFOAM-10
+sudo ln -sf /usr/lib/x86_64-linux-gnu/libscotch.so /usr/lib/x86_64-linux-gnu/scotch-int32/libscotch-6.1.so
+sudo ln -sf /usr/lib/x86_64-linux-gnu/libptscotch.so /usr/lib/x86_64-linux-gnu/scotch-int32/libptscotch-6.1.so
+sudo ln -sf /usr/lib/x86_64-linux-gnu/libptscotcherrexit.so /usr/lib/x86_64-linux-gnu/libptscotcherrexit-6.1.so
 
 #Ready to build OpenFoam now
 cd /workspaces/fastStream/OpenFOAM-10
