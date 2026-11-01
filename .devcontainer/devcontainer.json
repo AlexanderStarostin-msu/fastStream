@@ -1,3 +1,31 @@
 {
-    "postStartCommand": "bash -c 'source /workspaces/fastStream/OpenFOAM-10/etc/bashrc && foamVersion'"
+  "name": "C++ / OpenFOAM / Python Stack",
+  "dockerFile": "Dockerfile",
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": true
+    },
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "configureZshAsDefaultShell": true
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cpptools",
+        "llvm-vs-code-extensions.vscode-clangd",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "twxs.cmake"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "C_Cpp.intelliSenseEngine": "disabled",
+        "clangd.path": "clangd"
+      }
+    }
+  },
+  "postCreateCommand": "pip install numpy scipy matplotlib pyfoam && echo 'source /workspaces/fastStream/OpenFOAM-10/etc/bashrc' >> ~/.bashrc",
+  "remoteUser": "vscode"
 }
