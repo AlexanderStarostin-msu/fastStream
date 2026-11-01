@@ -115,10 +115,16 @@ REQ-DRONE-CITY-GEOMETRY
 The program shall support city-building geometry harvested from open sources.
 Implementation: Convert building footprints to watertight STL solids, refine
 the CFD mesh around the buildings, preserve sufficient numeric precision when
-writing meshes with projected coordinates, and validate the generated mesh
-before running the flow solver.
+writing meshes with projected coordinates, configure the horizontal block-mesh
+offset around the building geometry in snappyHexMeshDict, and validate the
+generated mesh before running the flow solver. genBlockMeshDict.py shall use
+the configured meshDomain.horizontalOffset for the inlet, outlet, and side
+boundaries, and update snappyHexMeshDict's locationInMesh to a point within
+that domain and outside the building geometry.
 Classes involved: gpkg2stl.py converts building footprints to STL;
-snappyHexMeshDict configures building and volume refinement.
+genBlockMeshDict.py creates blockMeshDict bounds and updates locationInMesh;
+snappyHexMeshDict configures the horizontal domain offset, building, and volume
+refinement.
 
 REQ-DRONE-CONTROL-MODEL
 The program shall model the drone using a control model.

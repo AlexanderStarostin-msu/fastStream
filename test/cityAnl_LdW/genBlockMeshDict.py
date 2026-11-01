@@ -6,42 +6,101 @@ USAGE:
 
 REQUIREMENTS:
     Run from the cityAnl_LdW case directory with trimesh installed and
-    constant/geometry/LdW.stl already generated. The script writes
-    system/blockMeshDict, keeping the city geometry centered in the CFD domain.
+    constant/geometry/LdW.stl already generated. Set meshDomain.horizontalOffset
+    in system/snappyHexMeshDict to the desired horizontal clearance in metres.
+    The script writes system/blockMeshDict with that offset around the building
+    geometry and updates locationInMesh in snappyHexMeshDict to a point inside
+    the west clearance and outside the building geometry.
 """
 
+import math
 from pathlib import Path
+import re
 
 import trimesh
 
-mesh = trimesh.load("constant/geometry/LdW.stl")
+snappy_dict_path = Path("system/snappyHexMeshDict")
+snappy_dict = snappy_dict_path.read_text(encoding="utf-8")
+offset_match = re.search(
+    r"\bmeshDomain\s*\{\s*horizontalOffset\s+"
+    r"([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)\s*;\s*\}",
+    snappy_dict,
+)
+if offset_match is None:
+    raise ValueError(
+        f"{snappy_dict_path} must define meshDomain.horizontalOffset"
+    )
+horizontal_offset = float(offset_match.group(1))
+if not math.isfinite(horizontal_offset) or horizontal_offset <= 0:
+    raise ValueError("meshDomain.horizontalOffset must be a positive finite value")
 
-xmin, ymin, zmin = mesh.bounds[0]
-xmax, ymax, zmax = mesh.bounds[1]
+geometry_path = Path("constant/geometry/LdW.stl")
+mesh = trimesh.load(geometry_path)
 
-Lx = xmax - xmin
-Ly = ymax - ymin
+xmin, ymin, zmin = map(float, mesh.bounds[0])
+xmax, ymax, zmax = map(float, mesh.bounds[1])
+building_bounds = (xmin, xmax, ymin, ymax, zmin, zmax)
+if not all(math.isfinite(value) for value in building_bounds):
+    raise ValueError(f"{geometry_path} has non-finite bounds")
+if xmax <= xmin or ymax <= ymin or zmax <= zmin:
+    raise ValueError(f"{geometry_path} has empty bounds")
+
 H  = zmax - zmin
 
 # CFD domain dimensions
-upstream   = 5.0 * H
-downstream = 15.0 * H
-side       = 5.0 * H
 top        = 6.0 * H
 
-x0 = xmin - upstream
-x1 = xmax + downstream
+x0 = xmin - horizontal_offset
+x1 = xmax + horizontal_offset
 
-y0 = ymin - side
-y1 = ymax + side
+y0 = ymin - horizontal_offset
+y1 = ymax + horizontal_offset
 
 z0 = 0.0
 z1 = top
 
-print("Domain")
-print(x0, x1)
-print(y0, y1)
-print(z0, z1)
+location_match = re.search(
+    r"\blocationInMesh\s*\(\s*"
+    r"([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)\s+"
+    r"([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)\s+"
+    r"([-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?)\s*\)\s*;",
+    snappy_dict,
+)
+if location_match is None:
+    raise ValueError(f"{snappy_dict_path} must define locationInMesh")
+
+location_in_mesh = (
+    xmin - horizontal_offset / 2,
+    (ymin + ymax) / 2,
+    float(location_match.group(3)),
+)
+if not z0 < location_in_mesh[2] < z1:
+    raise ValueError(
+        f"locationInMesh z coordinate must be inside the generated block "
+        f"domain (0, {z1:g})"
+    )
+
+snappy_dict = (
+    snappy_dict[: location_match.start()]
+    + "locationInMesh\n    (\n        "
+    + " ".join(f"{coordinate:.12g}" for coordinate in location_in_mesh)
+    + "\n    );"
+    + snappy_dict[location_match.end() :]
+)
+snappy_dict_path.write_text(snappy_dict, encoding="utf-8")
+
+print(f"Building bounds from {geometry_path}:")
+print(f"  x: {xmin:.3f} .. {xmax:.3f}")
+print(f"  y: {ymin:.3f} .. {ymax:.3f}")
+print(f"  z: {zmin:.3f} .. {zmax:.3f}")
+print(f"Block domain bounds ({horizontal_offset:g} m horizontal offset):")
+print(f"  x: {x0:.3f} .. {x1:.3f}")
+print(f"  y: {y0:.3f} .. {y1:.3f}")
+print(f"  z: {z0:.3f} .. {z1:.3f}")
+print(
+    "snappyHexMesh locationInMesh: "
+    + " ".join(f"{coordinate:.3f}" for coordinate in location_in_mesh)
+)
 
 nx = 80
 ny = 80

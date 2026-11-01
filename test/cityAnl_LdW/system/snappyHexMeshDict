@@ -8,6 +8,11 @@ FoamFile
     object      snappyHexMeshDict;
 }
 
+meshDomain
+{
+    horizontalOffset 20;
+}
+
 geometry
 {
     LdW.stl
@@ -64,7 +69,7 @@ castellatedMeshControls
 
     locationInMesh
     (
-        487536.4375 5876357 20
+        487726.779205 5876357.03636 20
     );
 }
 

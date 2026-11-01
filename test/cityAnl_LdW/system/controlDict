@@ -21,19 +21,19 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         200;
+endTime         400;
 
 deltaT          1;
 
 writeControl    timeStep;
 
-writeInterval   20;
+writeInterval   50;
 
 purgeWrite      0;
 
 writeFormat     ascii;
 
-writePrecision  12;
+writePrecision  6;
 
 writeCompression off;
 

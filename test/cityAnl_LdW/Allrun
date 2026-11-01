@@ -20,6 +20,8 @@ if [ "$#" -eq 0 ]; then
     fi
 
     surfaceFeatures > log.surfaceFeatures 2>&1
+    rm *.obj
+    
     python3 genBlockMeshDict.py > log.genBlockMeshDict
     blockMesh > log.blockMesh
     snappyHexMesh -overwrite > log.snappyHexMesh 2>&1
