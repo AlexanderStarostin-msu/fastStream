@@ -9,7 +9,7 @@ FoamFile
     object      fsStreamLineDict;
 }
 
-case "../../OpenFOAM-10/tutorials/incompressible/simpleFoam/pitzDaily";
+case "../../../OpenFOAM-10/tutorials/incompressible/simpleFoam/pitzDaily";
 
 // Defaults: one inlet start patch and one outlet destination patch.
 startPatches        (inlet);

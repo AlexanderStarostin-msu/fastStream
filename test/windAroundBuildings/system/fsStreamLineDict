@@ -9,6 +9,7 @@ FoamFile
     object      fsStreamLineDict;
 }
 
+//  case "../../../OpenFOAM-10/tutorials/incompressible/simpleFoam/windAroundBuildings";
 case "./";
 
 // Defaults: one inlet start patch and one outlet destination patch.
