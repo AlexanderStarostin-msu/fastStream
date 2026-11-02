@@ -102,9 +102,9 @@ print(
     + " ".join(f"{coordinate:.3f}" for coordinate in location_in_mesh)
 )
 
-nx = 80
-ny = 80
-nz = 40
+nx = 60
+ny = 40
+nz = 10
 
 Path("system").mkdir(exist_ok=True)
 

@@ -1,4 +1,6 @@
+
 rm -r ./postProcessing/*
+rm log.*
 
 foamListTimes -rm
 #alternatively find . -maxdepth 1 -type d \ -regex './[0-9].*' \  -exec rm -rf {} +

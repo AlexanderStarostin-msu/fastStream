@@ -35,12 +35,13 @@ addLayers false;
 
 castellatedMeshControls
 {
-    maxLocalCells  1000000;
-    maxGlobalCells 3000000;
+    maxLocalCells  4000000;
+    maxGlobalCells 8000000;
     minRefinementCells 10;
     nCellsBetweenLevels 3;
     resolveFeatureAngle 30;
     allowFreeStandingZoneFaces true;
+    nBufferLayers 2;
 
     features
     (
@@ -63,7 +64,7 @@ castellatedMeshControls
         refinementBox
         {
             mode inside;
-            level 1;
+            level 2;
         }
     }
 
@@ -87,7 +88,7 @@ meshQualityControls
     maxBoundarySkewness 20;
     maxInternalSkewness 4;
     maxConcave 80;
-    minVol -1e30;
+    minVol 1e-13;
     minTetQuality 1e-15;
     minTwist 0.02;
     minDeterminant 0.001;
