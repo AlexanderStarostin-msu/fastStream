@@ -2,15 +2,18 @@ ZermeloTrjGen
  ├─ parse configuration
  ├─ validate
  ├─ intersect patches
- ├─ sample starts
+ ├─ determine one start and destination
  ├─ prepare obstacles
- ├─ choose destination
- ├─ buildRoute()      <-- virtual
+ ├─ buildTrajectory() <-- virtual
  ├─ compute length
  ├─ compute travel time
  └─ collect results
 
 ZermeloTrjNoFlow
- └─ buildRoute()
+ └─ buildTrajectory()
         visibility graph
         shortest path
+
+ZermeloTrajectoryWriter
+ ├─ write trajectory geometry
+ └─ write trajectory identifiers and metadata

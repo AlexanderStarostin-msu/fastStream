@@ -3,12 +3,11 @@
 
 #include <boost/geometry.hpp>
 
-#include "ZermeloRoute.H"
+#include "ZermeloTrajectory.H"
 #include "dictionary.H"
 #include "fvMesh.H"
 #include "wordList.H"
 
-#include <random>
 #include <vector>
 
 namespace Foam
@@ -27,19 +26,17 @@ protected:
     scalar minObstacleClearance_;
     scalar deviceSpeed_;
     scalar geometryTolerance_;
-    std::vector<Segment2> startSegments_;
-    std::vector<Segment2> destinationSegments_;
+    point startPoint_;
+    point endPoint_;
     std::vector<Polygon2> obstacleFootprints_;
     std::vector<Polygon2> bufferedObstacles_;
-    std::mt19937 random_;
 
-    virtual bool buildRoute
+    virtual bool buildTrajectory
     (
         const point& start,
+        const point& end,
         std::vector<point>& waypoints
     ) const = 0;
-
-    std::vector<point> sampleStarts(const label nPoints);
 
     bool pointIsClear(const Point2& position) const;
     bool segmentIsClear(const Point2& start, const Point2& end) const;
@@ -75,9 +72,8 @@ public:
 
     void generate
     (
-        const label nPoints,
-        const fileName& csvFile,
-        const fileName& vtkFile
+        const fileName& tracksVtk,
+        const fileName& linesVtk
     );
 };
 

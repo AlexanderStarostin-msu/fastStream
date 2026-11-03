@@ -31,12 +31,9 @@ nSubCycle           5;
 
 outputStreamLines on;
 
-// Regenerate the mesh using snappyHexMeshDict so building walls are included
-// in the ground obstacle patch.
-// Zermelo uses the shared nPoints value above; lifeTime and nSubCycle apply
-// only to flow streamline integration.
-ZermeloTrjNoFlow
-{
+// Zermelo generates one route; nPoints, lifeTime, and nSubCycle apply only
+// to flow streamline integration.
+ZermeloTrjNoFlow {
      deviceSpeed         0.1;
      variableHeight      false;
 }

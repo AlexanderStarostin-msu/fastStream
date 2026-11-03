@@ -17,7 +17,7 @@ destinationPatches  (outlet);
 
 // Flight corridor is 10-30 m above ground, below the tallest 50 m buildings.
 minHeight           10;
-maxHeight           30;
+maxHeight           20;
 
 // Shared solver and grid-slice minimum clearance from obstacle surfaces.
 minObstacleClearance 10;
@@ -31,12 +31,13 @@ nSubCycle           5;
 
 outputStreamLines on;
 
-// Regenerate the mesh using snappyHexMeshDict so building walls are included
-// in the ground obstacle patch.
-// Zermelo uses the shared nPoints value above; lifeTime and nSubCycle apply
-// only to flow streamline integration.
-OFFZermeloTrjNoFlow
+startPoint      (-400 150 15); 
+endPoint        (400 0 15);
+
+// Zermelo generates one route; nPoints, lifeTime, and nSubCycle apply only
+// to flow streamline integration.
+ZermeloTrjNoFlow
 {
-     deviceSpeed         0.1;
-     variableHeight      false;
+    deviceSpeed         0.1;
+    variableHeight      false;
 }

@@ -361,6 +361,22 @@ int main(int argc, char *argv[])
     }
 
     const instant latestTime(timeDirs[latestTimeIndex]);
+    const fileName velocityPath
+    (
+        targetCase/timeDirs[latestTimeIndex].name()/"U"
+    );
+    const bool hasVelocityField =
+        exists(velocityPath) || exists(fileName(velocityPath + ".gz"));
+    const bool hasNoFlowGenerator = inputDict.found("ZermeloTrjNoFlow");
+    if (!hasVelocityField && !hasNoFlowGenerator)
+    {
+        FatalErrorInFunction
+            << "The analyzed case has no U field at time "
+            << timeDirs[latestTimeIndex].name()
+            << " and no flow-independent Zermelo generator is configured"
+            << exit(FatalError);
+    }
+
     const wordList startPatches
     (
         inputDict.lookupOrDefault<wordList>
@@ -389,7 +405,11 @@ int main(int argc, char *argv[])
     const bool hasMaxHeight = inputDict.found("maxHeight");
     const bool heightLimited = hasMinHeight || hasMaxHeight;
 
-    if (nPoints < 1 || lifeTime < 1 || nSubCycle < 1)
+    if
+    (
+        hasVelocityField
+     && (nPoints < 1 || lifeTime < 1 || nSubCycle < 1)
+    )
     {
         FatalIOErrorInFunction(inputDict)
             << "nPoints, lifeTime, and nSubCycle must be positive"
@@ -474,107 +494,132 @@ int main(int argc, char *argv[])
             )
         );
 
-        volVectorField U
-        (
-            IOobject
-            (
-                "U",
-                caseTime.timeName(),
-                mesh,
-                IOobject::MUST_READ,
-                IOobject::NO_WRITE
-            ),
-            mesh
-        );
-
-        validatePatches(startPatches, mesh.boundaryMesh(), "start");
-        validatePatches
-        (
-            destinationPatches,
-            mesh.boundaryMesh(),
-            "destination"
-        );
-
-        MotionCorridorConstraint corridorConstraint(mesh, inputDict);
-
-        if (inputDict.found("ZermeloTrjNoFlow"))
+        if (hasNoFlowGenerator)
         {
             const dictionary& zermeloDict =
                 inputDict.subDict("ZermeloTrjNoFlow");
             ZermeloTrjNoFlow zermelo(mesh, inputDict, zermeloDict);
             zermelo.generate
             (
-                nPoints,
-                finalOutput/"zermelo-no-flow.csv",
-                finalOutput/"zermelo-no-flow.vtk"
+                finalOutput/"zermelo-no-flow-tracks.vtk",
+                finalOutput/"zermelo-no-flow-lines.vtk"
             );
         }
 
-        dictionary seedSampleSet;
-        if (heightLimited)
+        if (hasVelocityField)
         {
-            const pointField seeds =
-                sampleHeightConstrainedSeeds
+            volVectorField U
+            (
+                IOobject
                 (
+                    "U",
+                    caseTime.timeName(),
                     mesh,
-                    startPatches,
-                    nPoints,
-                    inputDict.lookupOrDefault<scalar>("minHeight", -GREAT),
-                    inputDict.lookupOrDefault<scalar>("maxHeight", GREAT),
-                    hasMinHeight,
-                    hasMaxHeight
-                );
-            seedSampleSet.add("type", word("points"));
-            seedSampleSet.add("points", seeds);
-            seedSampleSet.add("ordered", Switch(false));
-            seedSampleSet.add("axis", word("xyz"));
+                    IOobject::MUST_READ,
+                    IOobject::NO_WRITE
+                ),
+                mesh
+            );
+
+            validatePatches(startPatches, mesh.boundaryMesh(), "start");
+            validatePatches
+            (
+                destinationPatches,
+                mesh.boundaryMesh(),
+                "destination"
+            );
+
+            MotionCorridorConstraint corridorConstraint(mesh, inputDict);
+
+            dictionary seedSampleSet;
+            if (heightLimited)
+            {
+                const pointField seeds =
+                    sampleHeightConstrainedSeeds
+                    (
+                        mesh,
+                        startPatches,
+                        nPoints,
+                        inputDict.lookupOrDefault<scalar>("minHeight", -GREAT),
+                        inputDict.lookupOrDefault<scalar>("maxHeight", GREAT),
+                        hasMinHeight,
+                        hasMaxHeight
+                    );
+                seedSampleSet.add("type", word("points"));
+                seedSampleSet.add("points", seeds);
+                seedSampleSet.add("ordered", Switch(false));
+                seedSampleSet.add("axis", word("xyz"));
+            }
+            else
+            {
+                seedSampleSet.add("type", word("boundaryRandom"));
+                seedSampleSet.add("patches", startPatches);
+                seedSampleSet.add("nPoints", nPoints);
+                seedSampleSet.add("axis", word("xyz"));
+            }
+
+            dictionary streamlinesDict;
+            streamlinesDict.add("fields", wordList(1, word("U")));
+            streamlinesDict.add("U", word("U"));
+            streamlinesDict.add("direction", word("forward"));
+            streamlinesDict.add("lifeTime", lifeTime);
+            streamlinesDict.add("nSubCycle", nSubCycle);
+            streamlinesDict.add("setFormat", word("vtk"));
+            streamlinesDict.add("writeFormat", word("ascii"));
+            streamlinesDict.add("seedSampleSet", seedSampleSet);
+
+            functionObjects::streamlines streamlines
+            (
+                "fsStreamlines",
+                caseTime,
+                streamlinesDict
+            );
+            streamlines.write();
+
+            if (exists(temporaryVtk))
+            {
+                tracks = StreamlineVtkReader::read(temporaryVtk);
+            }
+
+            meshSearch search(mesh);
+            StreamlineSummaryWriter summaryWriter
+            (
+                search,
+                mesh,
+                destinationPatches,
+                corridorConstraint
+            );
+            summaryWriter.write(finalOutput/"streamlines.csv", tracks);
         }
         else
         {
-            seedSampleSet.add("type", word("boundaryRandom"));
-            seedSampleSet.add("patches", startPatches);
-            seedSampleSet.add("nPoints", nPoints);
-            seedSampleSet.add("axis", word("xyz"));
+            Info<< "No U field is available; skipping streamline analysis."
+                << nl;
         }
-
-        dictionary streamlinesDict;
-        streamlinesDict.add("fields", wordList(1, word("U")));
-        streamlinesDict.add("U", word("U"));
-        streamlinesDict.add("direction", word("forward"));
-        streamlinesDict.add("lifeTime", lifeTime);
-        streamlinesDict.add("nSubCycle", nSubCycle);
-        streamlinesDict.add("setFormat", word("vtk"));
-        streamlinesDict.add("writeFormat", word("ascii"));
-        streamlinesDict.add("seedSampleSet", seedSampleSet);
-
-        functionObjects::streamlines streamlines
-        (
-            "fsStreamlines",
-            caseTime,
-            streamlinesDict
-        );
-        streamlines.write();
-
-        if (exists(temporaryVtk))
-        {
-            tracks = StreamlineVtkReader::read(temporaryVtk);
-        }
-
-        meshSearch search(mesh);
-        StreamlineSummaryWriter summaryWriter
-        (
-            search,
-            mesh,
-            destinationPatches,
-            corridorConstraint
-        );
-        summaryWriter.write(finalOutput/"streamlines.csv", tracks);
     }
 
-    const fileName csvFile(finalOutput/"streamlines.csv");
-    if (outputStreamLines && exists(temporaryVtk))
+    if (hasVelocityField)
     {
-        copyFile(temporaryVtk, finalOutput/"tracks.vtk");
+        const fileName csvFile(finalOutput/"streamlines.csv");
+        if (outputStreamLines && exists(temporaryVtk))
+        {
+            copyFile(temporaryVtk, finalOutput/"tracks.vtk");
+        }
+
+        Info<< "Wrote streamline summary to " << csvFile << nl;
+        if (outputStreamLines && exists(finalOutput/"tracks.vtk"))
+        {
+            Info<< "Wrote streamline VTK to " << finalOutput/"tracks.vtk"
+                << nl;
+        }
+        else if (outputStreamLines)
+        {
+            Info<< "No streamline VTK was produced (no track points)" << nl;
+        }
+        else
+        {
+            Info<< "VTK streamline output disabled" << nl;
+        }
     }
 
     removeTemporaryCase
@@ -582,20 +627,6 @@ int main(int argc, char *argv[])
         temporaryCase,
         timeDirs[latestTimeIndex].name()
     );
-
-    Info<< "Wrote streamline summary to " << csvFile << nl;
-    if (outputStreamLines && exists(finalOutput/"tracks.vtk"))
-    {
-        Info<< "Wrote streamline VTK to " << finalOutput/"tracks.vtk" << nl;
-    }
-    else if (outputStreamLines)
-    {
-        Info<< "No streamline VTK was produced (no track points)" << nl;
-    }
-    else
-    {
-        Info<< "VTK streamline output disabled" << nl;
-    }
 
     return 0;
 }

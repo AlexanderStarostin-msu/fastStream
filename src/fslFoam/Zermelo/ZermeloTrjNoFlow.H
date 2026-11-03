@@ -11,9 +11,10 @@ class ZermeloTrjNoFlow
     public ZermeloTrjGen
 {
 protected:
-    virtual bool buildRoute
+    virtual bool buildTrajectory
     (
         const point& start,
+        const point& end,
         std::vector<point>& waypoints
     ) const;
 

@@ -1,5 +1,5 @@
-#ifndef ZermeloRoute_H
-#define ZermeloRoute_H
+#ifndef ZermeloTrajectory_H
+#define ZermeloTrajectory_H
 
 #include "point.H"
 #include "scalar.H"
@@ -9,14 +9,16 @@
 namespace Foam
 {
 
-struct ZermeloRoute
+struct ZermeloTrajectory
 {
-    label routeId;
+    label trajectoryId;
     point start;
     point end;
     std::vector<point> waypoints;
     scalar length;
     scalar travelTime;
+
+    ZermeloTrajectory();
 };
 
 }

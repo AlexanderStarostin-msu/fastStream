@@ -1,13 +1,16 @@
 #include "ZermeloTrjGen.H"
-#include "ZermeloRouteWriter.H"
+#include "ZermeloTrajectoryWriter.H"
 #include "DynamicList.H"
 #include "error.H"
+#include "OSspecific.H"
 
 #include <algorithm>
 #include <cmath>
 #include <map>
 #include <set>
 #include <utility>
+
+#include <iomanip>
 
 namespace Foam
 {
@@ -18,6 +21,43 @@ namespace
 
 typedef std::pair<long long, long long> PointKey;
 typedef std::pair<label, label> EdgeKey;
+
+point centerOfSegments
+(
+    const std::vector<ZermeloTrjGen::Segment2>& segments,
+    const scalar height,
+    const scalar tolerance
+)
+{
+    scalar totalLength = 0;
+    scalar weightedX = 0;
+    scalar weightedY = 0;
+
+    for (std::size_t i = 0; i < segments.size(); ++i)
+    {
+        const scalar length = bg::length(segments[i]);
+        totalLength += length;
+        weightedX += length*0.5
+        *(
+            bg::get<0, 0>(segments[i])
+          + bg::get<1, 0>(segments[i])
+        );
+        weightedY += length*0.5
+        *(
+            bg::get<0, 1>(segments[i])
+          + bg::get<1, 1>(segments[i])
+        );
+    }
+
+    if (!(totalLength > tolerance))
+    {
+        FatalErrorInFunction
+            << "Patch intersections have zero total length"
+            << exit(FatalError);
+    }
+
+    return point(weightedX/totalLength, weightedY/totalLength, height);
+}
 
 
 PointKey pointKey
@@ -42,6 +82,140 @@ bool samePoint
 )
 {
     return bg::distance(a, b) <= tolerance;
+}
+
+template<class Ring>
+void appendSegmentRingIntersections
+(
+    const ZermeloTrjGen::Segment2& segment,
+    const Ring& ring,
+    const scalar dx,
+    const scalar dy,
+    const scalar lengthSqr,
+    std::vector<scalar>& parameters
+)
+{
+    for (std::size_t edgei = 0; edgei + 1 < ring.size(); ++edgei)
+    {
+        std::vector<ZermeloTrjGen::Point2> intersections;
+        bg::intersection
+        (
+            segment,
+            ZermeloTrjGen::Segment2(ring[edgei], ring[edgei + 1]),
+            intersections
+        );
+        for
+        (
+            std::size_t intersectioni = 0;
+            intersectioni < intersections.size();
+            ++intersectioni
+        )
+        {
+            const scalar parameter =
+                (
+                    (intersections[intersectioni].x()
+                        - bg::get<0, 0>(segment))*dx
+                  + (intersections[intersectioni].y()
+                        - bg::get<0, 1>(segment))*dy
+                )/lengthSqr;
+            parameters.push_back(max(scalar(0), min(scalar(1), parameter)));
+        }
+    }
+}
+
+
+bool segmentEntersPolygon
+(
+    const ZermeloTrjGen::Point2& start,
+    const ZermeloTrjGen::Point2& end,
+    const ZermeloTrjGen::Polygon2& polygon,
+    const scalar tolerance
+)
+{
+    if (bg::within(start, polygon) || bg::within(end, polygon))
+    {
+        return true;
+    }
+
+    const scalar dx = end.x() - start.x();
+    const scalar dy = end.y() - start.y();
+    const scalar lengthSqr = dx*dx + dy*dy;
+    if (lengthSqr <= tolerance*tolerance)
+    {
+        return false;
+    }
+
+    const ZermeloTrjGen::Segment2 segment(start, end);
+    std::vector<scalar> parameters(1, 0);
+    parameters.push_back(1);
+    appendSegmentRingIntersections
+    (
+        segment,
+        polygon.outer(),
+        dx,
+        dy,
+        lengthSqr,
+        parameters
+    );
+    for
+    (
+        std::size_t ringi = 0;
+        ringi < polygon.inners().size();
+        ++ringi
+    )
+    {
+        appendSegmentRingIntersections
+        (
+            segment,
+            polygon.inners()[ringi],
+            dx,
+            dy,
+            lengthSqr,
+            parameters
+        );
+    }
+
+    const scalar parameterTolerance = tolerance/Foam::sqrt(lengthSqr);
+    std::sort(parameters.begin(), parameters.end());
+    parameters.erase
+    (
+        std::unique
+        (
+            parameters.begin(),
+            parameters.end(),
+            [parameterTolerance](const scalar a, const scalar b)
+            {
+                return mag(a - b) <= parameterTolerance;
+            }
+        ),
+        parameters.end()
+    );
+
+    for
+    (
+        std::size_t i = 0;
+        i + 1 < parameters.size();
+        ++i
+    )
+    {
+        if (parameters[i + 1] - parameters[i] <= parameterTolerance)
+        {
+            continue;
+        }
+
+        const scalar parameter = 0.5*(parameters[i] + parameters[i + 1]);
+        const ZermeloTrjGen::Point2 midpoint
+        (
+            start.x() + parameter*dx,
+            start.y() + parameter*dy
+        );
+        if (bg::within(midpoint, polygon))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -373,14 +547,10 @@ ZermeloTrjGen::ZermeloTrjGen
         generatorDict.lookupOrDefault<scalar>("deviceSpeed", 0.1)
     ),
     geometryTolerance_(max(SMALL, 1e-9*mag(mesh.bounds().span()))),
-    startSegments_(),
-    destinationSegments_(),
+    startPoint_(point(0, 0, 0)),
+    endPoint_(point(0, 0, 0)),
     obstacleFootprints_(),
-    bufferedObstacles_(),
-    random_
-    (
-        generatorDict.lookupOrDefault<label>("randomSeed", 0)
-    )
+    bufferedObstacles_()
 {
     const Switch variableHeight =
         generatorDict.lookupOrDefault<Switch>("variableHeight", false);
@@ -412,8 +582,7 @@ ZermeloTrjGen::ZermeloTrjGen
             << "Zermelo requires finite minHeight <= maxHeight"
             << exit(FatalIOError);
     }
-    maxHeight = max(maxHeight, minHeight+1e-6); // Ensure maxHeight >= minHeight
-    routeHeight_ = 0.5*(minHeight + maxHeight);
+    routeHeight_ = minHeight + 0.5*(maxHeight - minHeight);
 
     if (!(minObstacleClearance_ >= 0) || !std::isfinite(minObstacleClearance_))
     {
@@ -465,26 +634,124 @@ ZermeloTrjGen::ZermeloTrjGen
             << exit(FatalIOError);
     }
 
-    startSegments_ =
-        intersectPatch(mesh_, startPatches, routeHeight_, geometryTolerance_);
-    destinationSegments_ =
-        intersectPatch
+    const wordList* endpointPatches[] =
+    {
+        &startPatches,
+        &destinationPatches
+    };
+    const word endpointTypes[] = {word("start"), word("destination")};
+    for (label typei = 0; typei < 2; ++typei)
+    {
+        for
         (
-            mesh_,
-            destinationPatches,
-            routeHeight_,
-            geometryTolerance_
-        );
-    if (startSegments_.empty())
+            label patchi = 0;
+            patchi < endpointPatches[typei]->size();
+            ++patchi
+        )
+        {
+            if
+            (
+                mesh_.boundaryMesh().findPatchID
+                (
+                    (*endpointPatches[typei])[patchi]
+                ) < 0
+            )
+            {
+                FatalIOErrorInFunction(inputDict)
+                    << "Unknown " << endpointTypes[typei] << " patch "
+                    << (*endpointPatches[typei])[patchi]
+                    << exit(FatalIOError);
+            }
+        }
+    }
+
+    std::vector<Segment2> startSegments;
+    if (!inputDict.found("startPoint"))
+    {
+        startSegments =
+            intersectPatch
+            (
+                mesh_,
+                startPatches,
+                routeHeight_,
+                geometryTolerance_
+            );
+        if (startSegments.empty())
+        {
+            FatalIOErrorInFunction(inputDict)
+                << "startPatches do not intersect the Zermelo route plane"
+                << exit(FatalIOError);
+        }
+    }
+
+    std::vector<Segment2> endSegments;
+    if (!inputDict.found("endPoint"))
+    {
+        endSegments =
+            intersectPatch
+            (
+                mesh_,
+                destinationPatches,
+                routeHeight_,
+                geometryTolerance_
+            );
+        if (endSegments.empty())
+        {
+            FatalIOErrorInFunction(inputDict)
+                << "destinationPatches do not intersect the Zermelo route "
+                << "plane"
+                << exit(FatalIOError);
+        }
+    }
+
+    if (inputDict.found("startPoint"))
+    {
+        inputDict.lookup("startPoint") >> startPoint_;
+    }
+    else
+    {
+        startPoint_ =
+            centerOfSegments(startSegments, routeHeight_, geometryTolerance_);
+    }
+    if (inputDict.found("endPoint"))
+    {
+        inputDict.lookup("endPoint") >> endPoint_;
+    }
+    else
+    {
+        endPoint_ =
+            centerOfSegments
+            (
+                endSegments,
+                routeHeight_,
+                geometryTolerance_
+            );
+    }
+
+    if
+    (
+        !std::isfinite(startPoint_.x())
+     || !std::isfinite(startPoint_.y())
+     || !std::isfinite(startPoint_.z())
+     || mag(startPoint_.z() - routeHeight_) > geometryTolerance_
+    )
     {
         FatalIOErrorInFunction(inputDict)
-            << "startPatches do not intersect the Zermelo route plane"
+            << "startPoint must be finite and lie in the Zermelo route plane "
+            << "at z=" << routeHeight_
             << exit(FatalIOError);
     }
-    if (destinationSegments_.empty())
+    if
+    (
+        !std::isfinite(endPoint_.x())
+     || !std::isfinite(endPoint_.y())
+     || !std::isfinite(endPoint_.z())
+     || mag(endPoint_.z() - routeHeight_) > geometryTolerance_
+    )
     {
         FatalIOErrorInFunction(inputDict)
-            << "destinationPatches do not intersect the Zermelo route plane"
+            << "endPoint must be finite and lie in the Zermelo route "
+            << "plane at z=" << routeHeight_
             << exit(FatalIOError);
     }
 
@@ -547,61 +814,6 @@ void ZermeloTrjGen::prepareObstacles()
 }
 
 
-std::vector<point> ZermeloTrjGen::sampleStarts(const label nPoints)
-{
-    std::vector<point> starts;
-    starts.reserve(nPoints);
-    scalar totalLength = 0;
-    for
-    (
-        std::size_t segmenti = 0;
-        segmenti < startSegments_.size();
-        ++segmenti
-    )
-    {
-        totalLength += bg::length(startSegments_[segmenti]);
-    }
-    if (!(totalLength > geometryTolerance_))
-    {
-        FatalErrorInFunction
-            << "Start patch intersections have zero total length"
-            << exit(FatalError);
-    }
-
-    std::uniform_real_distribution<scalar> pickSegment(0, totalLength);
-    std::uniform_real_distribution<scalar> pickFraction(0, 1);
-    for (label pointi = 0; pointi < nPoints; ++pointi)
-    {
-        scalar selection = pickSegment(random_);
-        std::size_t segmenti = 0;
-        for (; segmenti + 1 < startSegments_.size(); ++segmenti)
-        {
-            const scalar segmentLength = bg::length(startSegments_[segmenti]);
-            if (selection <= segmentLength)
-            {
-                break;
-            }
-            selection -= segmentLength;
-        }
-
-        const Segment2& segment = startSegments_[segmenti];
-        const scalar fraction = pickFraction(random_);
-        starts.push_back
-        (
-            point
-            (
-                bg::get<0, 0>(segment)
-                  + fraction*(bg::get<1, 0>(segment)-bg::get<0, 0>(segment)),
-                bg::get<0, 1>(segment)
-                  + fraction*(bg::get<1, 1>(segment)-bg::get<0, 1>(segment)),
-                routeHeight_
-            )
-        );
-    }
-    return starts;
-}
-
-
 bool ZermeloTrjGen::pointIsClear(const Point2& position) const
 {
     for
@@ -626,12 +838,6 @@ bool ZermeloTrjGen::segmentIsClear
     const Point2& end
 ) const
 {
-    const Point2 midpoint
-    (
-        0.5*(start.x() + end.x()),
-        0.5*(start.y() + end.y())
-    );
-
     for
     (
         std::size_t polyi = 0;
@@ -641,15 +847,14 @@ bool ZermeloTrjGen::segmentIsClear
     {
         if
         (
-            bg::within(start, bufferedObstacles_[polyi])
-         || bg::within(end, bufferedObstacles_[polyi])
-         || bg::within(midpoint, bufferedObstacles_[polyi])
+            segmentEntersPolygon
+            (
+                start,
+                end,
+                bufferedObstacles_[polyi],
+                geometryTolerance_
+            )
         )
-        {
-            return false;
-        }
-
-        if (bg::intersects(Segment2(start, end), bufferedObstacles_[polyi]))
         {
             return false;
         }
@@ -660,58 +865,71 @@ bool ZermeloTrjGen::segmentIsClear
 
 void ZermeloTrjGen::generate
 (
-    const label nPoints,
-    const fileName& csvFile,
-    const fileName& vtkFile
+    const fileName& tracksVtk,
+    const fileName& linesVtk
 )
 {
-    if (nPoints < 1)
+    std::vector<point> waypoints;
+    if (!buildTrajectory(startPoint_, endPoint_, waypoints))
+    {
+        if (exists(tracksVtk) && !rm(tracksVtk))
+        {
+            FatalErrorInFunction
+                << "Could not remove stale Zermelo trajectory file "
+                << tracksVtk << exit(FatalError);
+        }
+        if (exists(linesVtk) && !rm(linesVtk))
+        {
+            FatalErrorInFunction
+                << "Could not remove stale Zermelo trajectory file "
+                << linesVtk << exit(FatalError);
+        }
+        Info<< "No optimal Zermelo trajectory was found from "
+            << "startPoint " << startPoint_
+            << " to endPoint " << endPoint_
+            << "; no trajectory output was written." << nl;
+        return;
+    }
+
+    if (waypoints.empty())
     {
         FatalErrorInFunction
-            << "nPoints must be positive for Zermelo route generation"
+            << "The Zermelo trajectory strategy returned an empty trajectory"
             << exit(FatalError);
     }
 
-    const std::vector<point> starts = sampleStarts(nPoints);
-    std::vector<ZermeloRoute> routes;
-    label unreachableCount = 0;
-
-    for (std::size_t starti = 0; starti < starts.size(); ++starti)
+    scalar trajectoryLength = 0;
+    for (std::size_t pointi = 1; pointi < waypoints.size(); ++pointi)
     {
-        std::vector<point> waypoints;
-        if (!buildRoute(starts[starti], waypoints))
-        {
-            ++unreachableCount;
-            Info<< "Zermelo start " << starti << " at " << starts[starti]
-                << " has no feasible destination route" << nl;
-            continue;
-        }
-
-        scalar routeLength = 0;
-        for
-        (
-            std::size_t pointi = 1;
-            pointi < waypoints.size();
-            ++pointi
-        )
-        {
-            routeLength += mag(waypoints[pointi] - waypoints[pointi - 1]);
-        }
-
-        ZermeloRoute route;
-        route.routeId = starti;
-        route.start = starts[starti];
-        route.end = waypoints.back();
-        route.waypoints = waypoints;
-        route.length = routeLength;
-        route.travelTime = routeLength/deviceSpeed_;
-        routes.push_back(route);
+        trajectoryLength += mag(waypoints[pointi] - waypoints[pointi - 1]);
     }
 
-    ZermeloRouteWriter::write(csvFile, vtkFile, routes);
-    Info<< "Wrote " << routes.size() << " Zermelo no-flow routes to "
-        << csvFile << nl
-        << "Unreachable Zermelo starts: " << unreachableCount << nl;
+    ZermeloTrajectory trajectory;
+    trajectory.trajectoryId = 0;
+    trajectory.start = startPoint_;
+    trajectory.end = endPoint_;
+    trajectory.waypoints = waypoints;
+    trajectory.length = trajectoryLength;
+    trajectory.travelTime = trajectoryLength/deviceSpeed_;
+
+    ZermeloTrajectoryWriter::write
+    (
+        tracksVtk,
+        linesVtk,
+        std::vector<ZermeloTrajectory>(1, trajectory)
+    );
+    // Calculate the direct straight-line distance between start and end
+    scalar lineLength = mag(trajectory.end - trajectory.start);
+
+    Info<< "Zermelo trajectory " << trajectory.trajectoryId << nl
+        << ": startPoint " << trajectory.start
+        << ", endPoint " << trajectory.end
+        << ", straight-line " << lineLength
+        << ", length " <<  trajectory.length
+        << ", travelTime " << trajectory.travelTime << nl
+        << "Wrote the optimal Zermelo trajectory to " << tracksVtk
+        << " and " << linesVtk << nl;
+
 }
 
 }

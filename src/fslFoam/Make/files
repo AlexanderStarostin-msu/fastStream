@@ -1,5 +1,6 @@
 Streamlines/MotionCorridorConstraint.C
-Zermelo/ZermeloRouteWriter.C
+Zermelo/ZermeloTrajectory.C
+Zermelo/ZermeloTrajectoryWriter.C
 Zermelo/ZermeloTrjGen.C
 Zermelo/ZermeloTrjNoFlow.C
 Streamlines/StreamlineVtkReader.C
