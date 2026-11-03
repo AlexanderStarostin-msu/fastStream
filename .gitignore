@@ -1,0 +1,45 @@
+
+# No images in sources
+src/**/*.png
+src/**/*.jpg
+src/**/*.bmp
+
+#TODO: Clarify how md created
+src/**/*.md
+
+src/**/Make/linux*
+
+test/**/postProcessing
+test/**/constant/polyMesh
+test/**/*.vtk
+#test/**/*.stl
+test/**/*.png
+test/**/*.obj
+test/**/*.extendedFeatureEdgeMesh
+test/**/*.eMesh
+test/**/badFaces
+
+test/**/dynamicCode
+test/**/VTK
+
+# OpenFOAM time directories
+test/**/[1-9]*/
+test/**/[1-9]*.[0-9]*/
+# Keep initial fields
+!0/
+!0/**
+
+# Parallel decomposition
+processor*/
+
+# Reconstruction leftovers
+processors*/
+
+# Post-processing
+postProcessing/
+
+# Logs
+log*
+*.log
+
+__pycache__/

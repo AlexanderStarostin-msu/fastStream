@@ -1,0 +1,38 @@
+#use with the command in the OF case folder:
+#    gnuplot cropResiduals -
+
+if ( ARG1 eq "save") {
+  set term png             
+  set output "residualsTotal.png" 
+}
+
+set logscale y
+set grid
+set title system("echo  ${PWD##*/}: Residuals")
+set ylabel "Residuals"
+set xlabel "Iteration"
+#set xrange [0:100];
+set yrange [1e-6:1];
+
+solver="simpleFoam"
+
+labelTime = system( "tail -1000 log.".solver." | grep '^Time = ' | tail -1" )
+set label 1 "".labelTime at 0,1.5 
+
+labelCo = system( "tail -1000 log.".solver." | grep '^Courant Number mean: ' | tail -1")
+set label 2 "".labelCo at 0,1.5-1 
+
+cropFile=" cat log.".solver
+plot "< ".cropFile." | grep 'Solving for p,' | cut -d' ' -f9 | tr -d ','" title "p" with lines,\
+  "< ".cropFile." | grep 'Solving for Ux,' | cut -d' ' -f9 | tr -d ','" title "Ux" with lines,\
+  "< ".cropFile." | grep 'Solving for Uy,' | cut -d' ' -f9 | tr -d ','" title "Uy" with lines,\
+  "< ".cropFile." | grep 'Solving for Uz,' | cut -d' ' -f9 | tr -d ','" title "Uz" with lines,\
+  "< ".cropFile." | grep 'Solving for k,' | cut -d' ' -f9 | tr -d ','" title "k" with lines,\
+
+if ( ARG1 eq "save") {
+  exit
+}
+
+pause 1
+
+reread

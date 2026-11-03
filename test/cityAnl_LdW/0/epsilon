@@ -1,0 +1,42 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    location    "0";
+    object      epsilon;
+}
+dimensions      [0 2 -3 0 0 0 0];
+internalField   uniform 0.000004;
+boundaryField
+{
+    // Updated by bndFromMap.py at 2026-10-30T21:43:11Z (UTC)
+    ground
+    {
+        type epsilonWallFunction;     value uniform 0.000004;
+    }
+
+    inlet
+    {
+        type fixedValue;    value uniform 0.000004;
+    }
+
+    outlet
+    {
+        type zeroGradient;
+    }
+
+    sides
+    {
+        type symmetry;
+    }
+
+    top
+    {
+        type symmetry;
+    }
+}

@@ -1,0 +1,43 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| fsFoam input: copy this file into the analysis case's system directory.    |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fsStreamLineDict;
+}
+
+case "./";
+
+// Defaults: one inlet start patch and one outlet destination patch.
+startPatches        (inlet);
+destinationPatches  (outlet);
+
+// Flight corridor is 10-30 m above ground, below the tallest 50 m buildings.
+minHeight           4;
+maxHeight           6;
+
+// Shared solver and grid-slice minimum clearance from obstacle surfaces.
+minObstacleClearance 10;
+obstaclePatches      (ground);
+
+
+// Number of area-weighted seed points over the selected start patches.
+nPoints             100;
+lifeTime            10000;
+nSubCycle           5;
+
+outputStreamLines on;
+
+startPoint      (-400 200 5); 
+endPoint        (400 -100 5);
+
+// Zermelo generates one route; nPoints, lifeTime, and nSubCycle apply only
+// to flow streamline integration.
+ZermeloTrjNoFlow
+{
+    deviceSpeed         0.1;
+    variableHeight      false;
+}

@@ -1,0 +1,37 @@
+# Mesh patches: inlet, outlet, sides, top, ground.
+# as in simpleFoam example
+inlet:
+    U:  type fixedValue;        value uniform ($U 0 0);   
+    p:  type zeroGradient;
+    k:  type fixedValue;        value uniform 0.00375;
+    epsilon:    type fixedValue;    value uniform 0.000004;
+    omega:      type fixedValue;    value uniform 1.0;
+    nut:        type calculated;      value uniform 0;
+outlet:
+    U:  type zeroGradient;
+    p:  type totalPressure;  p0 uniform 0;  value uniform 0;
+    k:  type zeroGradient;
+    epsilon:    type zeroGradient;
+    omega:      type zeroGradient;
+    nut:        type zeroGradient;
+sides:
+    U:   type symmetry;
+    p:   type symmetry;
+    k:   type symmetry;
+    epsilon:      type symmetry;
+    omega:        type symmetry;
+    nut:          type symmetry;
+top:
+    U:   type symmetry;
+    p:   type symmetry;
+    k:   type symmetry;
+    epsilon:      type symmetry;
+    omega:        type symmetry;
+    nut:          type symmetry;
+ground:
+    U:    type noSlip;
+    p:    type zeroGradient;
+    k:    type kqRWallFunction;        value uniform 0.00375;
+    epsilon:    type epsilonWallFunction;     value uniform 0.000004;
+    omega:      type omegaWallFunction;       value uniform 1.0;
+    nut:        type nutkWallFunction;        value uniform 0;

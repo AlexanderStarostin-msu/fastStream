@@ -1,0 +1,63 @@
+#!/bin/sh
+set -eu
+
+cd "$(dirname "$0")"
+
+if [ "$#" -gt 1 ] || { [ "$#" -eq 1 ] && [ "$1" != "--nomesh" ]; }; then
+    echo "Usage: $0 [--nomesh]" >&2
+    exit 2
+fi
+
+if [ "$#" -eq 0 ]; then
+    ../../utils/gpkg2stl.py LdW.gpkg constant/geometry/LdW.stl
+    python3 genBlockMeshDict.py > log.genBlockMeshDict
+
+    surfaceCheck -checkSelfIntersection constant/geometry/LdW.stl \
+        > log.surfaceCheck 2>&1
+    if grep -Eq 'Surface is not closed|Surface is self-intersecting' \
+        log.surfaceCheck; then
+        cat log.surfaceCheck >&2
+        echo "Generated building surface is not suitable for snappyHexMesh" >&2
+        exit 1
+    fi
+
+    surfaceFeatures > log.surfaceFeatures 2>&1
+    rm *.obj
+
+    rm -rf constant/polyMesh #important othewise snappyHexMesh might fail
+    blockMesh > log.blockMesh && snappyHexMesh -overwrite > log.snappyHexMesh 2>&1
+
+    if ! grep -Eq 'Selected for internal refinement : [1-9][0-9]* cells' \
+        log.snappyHexMesh; then
+        cat log.snappyHexMesh >&2
+        echo "snappyHexMesh did not refine cells inside the city region" >&2
+        exit 1
+    fi
+    if ! checkMesh -allTopology -allGeometry > log.checkMesh 2>&1; then
+        cat log.checkMesh >&2
+        echo "checkMesh could not validate the city mesh" >&2
+        exit 1
+    fi
+    if grep -Eq 'Zero or negative (face area|cell volume) detected' \
+        log.checkMesh; then
+        cat log.checkMesh >&2
+        echo "checkMesh found invalid city mesh geometry" >&2
+        exit 1
+    fi
+    if grep -Eq 'Failed [1-9][0-9]* mesh checks' log.checkMesh; then
+        echo "checkMesh reported mesh-quality warnings; see log.checkMesh" >&2
+       
+    fi
+fi
+
+foamToVTK -latestTime > log.foamToVTK && ../../utils/plotGridSlice.py
+
+simpleFoam > log.simpleFoam
+
+foamToVTK -latestTime > log.foamToVTK
+fslFoam > log.fslFoam
+
+../../utils/vizStreamLines.py "./" xy > log.vizStreamLines 2>&1 && rm log.vizStreamLines
+
+refOFCase=LdW
+mv $refOFCase.png ./postProcessing/$refOFCase/

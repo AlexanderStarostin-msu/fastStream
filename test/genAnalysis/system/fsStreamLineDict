@@ -1,0 +1,23 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| fsFoam input: copy this file into the analysis case's system directory.    |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fsStreamLineDict;
+}
+
+case "../../../OpenFOAM-10/tutorials/incompressible/simpleFoam/pitzDaily";
+
+// Defaults: one inlet start patch and one outlet destination patch.
+startPatches        (inlet);
+destinationPatches  (outlet);
+
+// Number of area-weighted seed points over the selected start patches.
+nPoints             100;
+lifeTime            10000;
+nSubCycle           5;
+
+outputStreamLines on;

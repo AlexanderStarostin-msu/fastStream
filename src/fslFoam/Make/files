@@ -1,0 +1,10 @@
+Streamlines/MotionCorridorConstraint.C
+Zermelo/ZermeloTrajectory.C
+Zermelo/ZermeloTrajectoryWriter.C
+Zermelo/ZermeloTrjGen.C
+Zermelo/ZermeloTrjNoFlow.C
+Streamlines/StreamlineVtkReader.C
+Streamlines/StreamlineSummaryWriter.C
+fslFoam.C
+
+EXE = $(FOAM_USER_APPBIN)/fslFoam

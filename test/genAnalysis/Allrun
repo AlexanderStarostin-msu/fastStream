@@ -1,0 +1,6 @@
+../../utils/vizStreamLines.py "/workspaces/fastStream/OpenFOAM-10/tutorials/incompressible/simpleFoam/pitzDaily" xy > log.vizStreamLines 2>&1 && rm log.vizStreamLines
+
+fslFoam > log.fslFoam
+
+refOFCase=pitzDaily
+mv $refOFCase.png ./postProcessing/$refOFCase/

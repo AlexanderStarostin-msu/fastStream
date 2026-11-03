@@ -1,0 +1,3 @@
+rm -r ./postProcessing/*
+
+echo "The case is cleaned up."
