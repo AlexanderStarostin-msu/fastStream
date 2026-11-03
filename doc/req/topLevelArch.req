@@ -114,13 +114,21 @@ functionObjects::streamlines; there is no scenario-specific class.
 REQ-DRONE-CITY-GEOMETRY
 The program shall support city-building geometry harvested from open sources.
 Implementation: Convert building footprints to watertight STL solids, refine
-the CFD mesh around the buildings, preserve sufficient numeric precision when
-writing meshes with projected coordinates, configure the horizontal block-mesh
-offset around the building geometry in snappyHexMeshDict, and validate the
-generated mesh before running the flow solver. genBlockMeshDict.py shall use
-the configured meshDomain.horizontalOffset for the inlet, outlet, and side
+the CFD mesh around the buildings, translate projected footprints into a
+local XY coordinate frame centered on their bounds before geometry processing
+and STL export, keep the ground plane at z=0, configure the horizontal
+block-mesh offset around the building geometry in snappyHexMeshDict, and
+validate the generated mesh before running the flow solver. This local frame
+shall be used to avoid precision loss from large projected coordinates in
+geometry processing and CFD meshing. genBlockMeshDict.py shall use the
+configured meshDomain.horizontalOffset for the inlet, outlet, and side
 boundaries, and update snappyHexMeshDict's locationInMesh to a point within
 that domain and outside the building geometry.
+genBlockMeshDict.py shall center an uncentered STL's XY bounds on the local
+origin, translate the configured refinementBox by the same amount, and do so
+before surfaceFeatures derives geometry from the STL. If the STL was already
+centered by gpkg2stl.py, it shall realign a refinementBox that no longer
+encloses the local building bounds.
 Classes involved: gpkg2stl.py converts building footprints to STL;
 genBlockMeshDict.py creates blockMeshDict bounds and updates locationInMesh;
 snappyHexMeshDict configures the horizontal domain offset, building, and volume

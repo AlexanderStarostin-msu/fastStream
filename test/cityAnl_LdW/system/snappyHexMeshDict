@@ -24,8 +24,8 @@ geometry
     refinementBox
     {
         type searchableBox;
-        min (487700 5876075 0);
-        max (488550 5876650 80);
+        min (-425 -287.5 0);
+        max (425 287.5 80);
     }
 }
 
@@ -70,7 +70,7 @@ castellatedMeshControls
 
     locationInMesh
     (
-        487726.779205 5876357.03636 20
+        -396.933912417 0 20
     );
 }
 

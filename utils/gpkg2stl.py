@@ -14,7 +14,9 @@ REQUIREMENTS:
     Python 3.9+ with geopandas, shapely 2.1+, trimesh, numpy, and pyvista.
     Input must contain a ``multipolygons`` layer with a ``building`` column
     and a defined coordinate reference system. Buildings are reprojected to
-    EPSG:25832 before extrusion. Polygon rings are topology-preserving
+    EPSG:25832, then translated so the footprint bounds are centered on the
+    local XY origin before geometry processing and extrusion. The ground plane
+    remains at z=0. Polygon rings are topology-preserving
     simplified by 30 cm to remove redundant near-collinear vertices. Each
     extruded building is checked for watertightness and consistent
     winding. The combined mesh and reloaded STL are checked for finite
@@ -22,8 +24,8 @@ REQUIREMENTS:
     quality of 0.01. Constrained Delaunay triangulation avoids sliver cap
     facets without altering footprint geometry. Overlapping footprints are
     assigned to the tallest building, and footprints are inset by 25 cm to
-    prevent shared walls between separate solids. ASCII STL preserves
-    precision at UTM-scale coordinates.
+    prevent shared walls between separate solids. Local coordinates avoid
+    precision loss in downstream mesh generation and CFD calculations.
 """
 
 import argparse
@@ -110,6 +112,28 @@ def extract_buildings(gpkg_file):
 def project_to_metric(buildings):
     print("Reprojecting to EPSG:25832 ...")
     return buildings.to_crs(25832)
+
+
+def center_buildings(buildings):
+    """Translate projected footprints to a local frame centered in XY."""
+    bounds = buildings.total_bounds
+    if not np.isfinite(bounds).all():
+        raise ValueError("Projected building footprints have non-finite bounds")
+
+    xmin, ymin, xmax, ymax = bounds
+    center_x = xmin + (xmax - xmin) / 2
+    center_y = ymin + (ymax - ymin) / 2
+    print(
+        "Translating footprints to local XY origin "
+        f"(projected center: {center_x:.3f}, {center_y:.3f} m)"
+    )
+
+    buildings = buildings.copy()
+    buildings.geometry = buildings.geometry.translate(
+        xoff=-center_x,
+        yoff=-center_y,
+    )
+    return buildings.set_crs(None, allow_override=True)
 
 
 def polygon_parts(geometry):
@@ -350,6 +374,7 @@ def main():
 
     buildings = extract_buildings(args.input_gpkg)
     buildings = project_to_metric(buildings)
+    buildings = center_buildings(buildings)
     city = build_mesh(buildings)
 
     print(f"\nVertices: {len(city.vertices)}")

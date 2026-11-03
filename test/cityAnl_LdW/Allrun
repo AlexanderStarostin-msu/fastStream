@@ -10,6 +10,8 @@ fi
 
 if [ "$#" -eq 0 ]; then
     ../../utils/gpkg2stl.py LdW.gpkg constant/geometry/LdW.stl
+    python3 genBlockMeshDict.py > log.genBlockMeshDict
+
     surfaceCheck -checkSelfIntersection constant/geometry/LdW.stl \
         > log.surfaceCheck 2>&1
     if grep -Eq 'Surface is not closed|Surface is self-intersecting' \
@@ -21,8 +23,6 @@ if [ "$#" -eq 0 ]; then
 
     surfaceFeatures > log.surfaceFeatures 2>&1
     rm *.obj
-
-    python3 genBlockMeshDict.py > log.genBlockMeshDict
 
     rm -rf constant/polyMesh #important othewise snappyHexMesh might fail
     blockMesh > log.blockMesh && snappyHexMesh -overwrite > log.snappyHexMesh 2>&1
