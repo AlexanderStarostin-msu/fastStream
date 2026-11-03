@@ -163,11 +163,9 @@ p.add_mesh(
     render_lines_as_tubes=True,
     scalar_bar_args={"title": "Time of flight (s)"},
 )
-add_trajectories(
-    p,
-    case_dir / "postProcessing" / "zermelo-no-flow.vtk",
-    color="blue",
-)
+
+#add Zermelo no-flow trajectories if they exist
+add_trajectories( p, case_dir / "postProcessing" / "zermelo-no-flow-tracks.vtk", color="red")
 
 plane_orientation = {
     "xy": ((0, 0, 1), (0, 1, 0)),
