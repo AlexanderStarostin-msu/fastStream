@@ -41,6 +41,10 @@ ZermeloTrjNoFlow shall:
   obstacle; visibility-graph contact with obstacle boundaries is permitted;
 -return the trajectory geometry to the base workflow for result processing;
 -report the trajectory as unreachable when no collision-free path exists.
+-report progress in the application log during patch intersection, obstacle
+  footprint preparation, visibility-graph vertex preparation, and shortest-path
+  search; search progress shall show completed candidate checks relative to the
+  maximum possible visibility-graph candidate checks.
 -Variable-height routing is outside the scope of this generator. If variableHeight is enabled, the generator shall terminate with a configuration error.
 Related class: ZermeloTrjNoFlow : public ZermeloTrjGen
 

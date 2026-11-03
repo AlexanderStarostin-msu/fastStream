@@ -22,6 +22,28 @@ namespace
 typedef std::pair<long long, long long> PointKey;
 typedef std::pair<label, label> EdgeKey;
 
+void reportProgress
+(
+    const char* stage,
+    const std::size_t completed,
+    const std::size_t total,
+    label& nextPercent
+)
+{
+    const label percent =
+        total == 0
+      ? 100
+      : static_cast<label>(100.0*completed/total);
+
+    if (percent >= nextPercent || completed == total)
+    {
+        Info<< "[Zermelo] " << stage << ": " << percent << "% ("
+            << completed << '/' << total << ')' << endl;
+        nextPercent = (percent/10 + 1)*10;
+    }
+}
+
+
 point centerOfSegments
 (
     const std::vector<ZermeloTrjGen::Segment2>& segments,
@@ -332,6 +354,7 @@ std::vector<ZermeloTrjGen::Segment2> ZermeloTrjGen::intersectPatch
 )
 {
     std::vector<Segment2> segments;
+    std::size_t totalFaces = 0;
 
     forAll(patchNames, patchNamei)
     {
@@ -344,6 +367,24 @@ std::vector<ZermeloTrjGen::Segment2> ZermeloTrjGen::intersectPatch
                 << exit(FatalError);
         }
 
+        totalFaces += mesh.boundaryMesh()[patchi].size();
+    }
+
+    Info<< "[Zermelo] Intersecting patches with the route plane." << endl;
+    label nextPercent = 0;
+    std::size_t completedFaces = 0;
+    reportProgress
+    (
+        "Patch-plane intersections",
+        completedFaces,
+        totalFaces,
+        nextPercent
+    );
+
+    forAll(patchNames, patchNamei)
+    {
+        const label patchi =
+            mesh.boundaryMesh().findPatchID(patchNames[patchNamei]);
         const polyPatch& patch = mesh.boundaryMesh()[patchi];
         const label patchEnd = patch.start() + patch.size();
         for (label facei = patch.start(); facei < patchEnd; ++facei)
@@ -360,6 +401,14 @@ std::vector<ZermeloTrjGen::Segment2> ZermeloTrjGen::intersectPatch
             {
                 segments.push_back(Segment2(cut[0], cut[1]));
             }
+            ++completedFaces;
+            reportProgress
+            (
+                "Patch-plane intersections",
+                completedFaces,
+                totalFaces,
+                nextPercent
+            );
         }
     }
 
@@ -385,9 +434,12 @@ ZermeloTrjGen::extractObstacleFootprints
             << exit(FatalError);
     }
 
+    Info<< "[Zermelo] Assembling obstacle contours from " << segments.size()
+        << " intersected faces." << endl;
     std::map<PointKey, label> pointLabels;
     std::vector<Point2> graphPoints;
     std::set<EdgeKey> uniqueEdges;
+    label nextSegmentPercent = 0;
 
     for (std::size_t i = 0; i < segments.size(); ++i)
     {
@@ -423,6 +475,13 @@ ZermeloTrjGen::extractObstacleFootprints
                 std::minmax(endpointLabels[0], endpointLabels[1])
             );
         }
+        reportProgress
+        (
+            "Obstacle contour assembly",
+            i + 1,
+            segments.size(),
+            nextSegmentPercent
+        );
     }
 
     std::vector<EdgeKey> edges(uniqueEdges.begin(), uniqueEdges.end());
@@ -435,6 +494,17 @@ ZermeloTrjGen::extractObstacleFootprints
 
     std::vector<bool> visited(edges.size(), false);
     std::vector<Polygon2> polygons;
+    std::size_t completedContourEdges = 0;
+    label nextContourPercent = 0;
+    Info<< "[Zermelo] Tracing " << edges.size()
+        << " obstacle contour edges." << endl;
+    reportProgress
+    (
+        "Obstacle contour tracing",
+        completedContourEdges,
+        edges.size(),
+        nextContourPercent
+    );
 
     for (std::size_t edgei = 0; edgei < edges.size(); ++edgei)
     {
@@ -448,6 +518,14 @@ ZermeloTrjGen::extractObstacleFootprints
         label currentNode = edges[edgei].second;
         std::vector<label> loop(1, startNode);
         visited[edgei] = true;
+        ++completedContourEdges;
+        reportProgress
+        (
+            "Obstacle contour tracing",
+            completedContourEdges,
+            edges.size(),
+            nextContourPercent
+        );
 
         while (currentNode != startNode)
         {
@@ -485,6 +563,14 @@ ZermeloTrjGen::extractObstacleFootprints
             }
 
             visited[nextEdge] = true;
+            ++completedContourEdges;
+            reportProgress
+            (
+                "Obstacle contour tracing",
+                completedContourEdges,
+                edges.size(),
+                nextContourPercent
+            );
             const EdgeKey& edge = edges[nextEdge];
             const label nextNode =
                 edge.first == currentNode ? edge.second : edge.first;
@@ -552,6 +638,7 @@ ZermeloTrjGen::ZermeloTrjGen
     obstacleFootprints_(),
     bufferedObstacles_()
 {
+    Info<< "[Zermelo] Validating route configuration." << endl;
     const Switch variableHeight =
         generatorDict.lookupOrDefault<Switch>("variableHeight", false);
     if (variableHeight)
@@ -583,6 +670,8 @@ ZermeloTrjGen::ZermeloTrjGen
             << exit(FatalIOError);
     }
     routeHeight_ = minHeight + 0.5*(maxHeight - minHeight);
+    Info<< "[Zermelo] Fixed route plane is z=" << routeHeight_ << " m."
+        << endl;
 
     if (!(minObstacleClearance_ >= 0) || !std::isfinite(minObstacleClearance_))
     {
@@ -634,6 +723,7 @@ ZermeloTrjGen::ZermeloTrjGen
             << exit(FatalIOError);
     }
 
+    Info<< "[Zermelo] Resolving startPoint and endPoint." << endl;
     const wordList* endpointPatches[] =
     {
         &startPatches,
@@ -755,6 +845,9 @@ ZermeloTrjGen::ZermeloTrjGen
             << exit(FatalIOError);
     }
 
+    Info<< "[Zermelo] Resolved endpoints: startPoint " << startPoint_
+        << ", endPoint " << endPoint_ << endl
+        << "[Zermelo] Extracting and buffering obstacle footprints." << endl;
     obstacleFootprints_ =
         extractObstacleFootprints
         (
@@ -764,6 +857,9 @@ ZermeloTrjGen::ZermeloTrjGen
             geometryTolerance_
         );
     prepareObstacles();
+    Info<< "[Zermelo] Obstacle preparation complete: "
+        << obstacleFootprints_.size() << " footprints, "
+        << bufferedObstacles_.size() << " buffered obstacles." << endl;
 }
 
 
@@ -782,6 +878,17 @@ void ZermeloTrjGen::prepareObstacles()
     const bg::strategy::buffer::end_round endStrategy(16);
     const bg::strategy::buffer::point_circle pointStrategy(16);
 
+    Info<< "[Zermelo] Preparing clearance buffers for "
+        << obstacleFootprints_.size() << " obstacle footprints." << endl;
+    label nextPercent = 0;
+    reportProgress
+    (
+        "Obstacle clearance preparation",
+        0,
+        obstacleFootprints_.size(),
+        nextPercent
+    );
+
     for
     (
         std::size_t polyi = 0;
@@ -792,6 +899,13 @@ void ZermeloTrjGen::prepareObstacles()
         if (minObstacleClearance_ == 0)
         {
             bufferedObstacles_.push_back(obstacleFootprints_[polyi]);
+            reportProgress
+            (
+                "Obstacle clearance preparation",
+                polyi + 1,
+                obstacleFootprints_.size(),
+                nextPercent
+            );
             continue;
         }
 
@@ -810,6 +924,13 @@ void ZermeloTrjGen::prepareObstacles()
         {
             bufferedObstacles_.push_back(buffered[i]);
         }
+        reportProgress
+        (
+            "Obstacle clearance preparation",
+            polyi + 1,
+            obstacleFootprints_.size(),
+            nextPercent
+        );
     }
 }
 
@@ -870,6 +991,7 @@ void ZermeloTrjGen::generate
 )
 {
     std::vector<point> waypoints;
+    Info<< "[Zermelo] Route generation started (0%)." << endl;
     if (!buildTrajectory(startPoint_, endPoint_, waypoints))
     {
         if (exists(tracksVtk) && !rm(tracksVtk))
@@ -903,6 +1025,8 @@ void ZermeloTrjGen::generate
     {
         trajectoryLength += mag(waypoints[pointi] - waypoints[pointi - 1]);
     }
+    Info<< "[Zermelo] Route geometry is complete (90%); length="
+        << trajectoryLength << " m. Writing trajectory files." << endl;
 
     ZermeloTrajectory trajectory;
     trajectory.trajectoryId = 0;
@@ -928,7 +1052,8 @@ void ZermeloTrjGen::generate
         << ", length " <<  trajectory.length
         << ", travelTime " << trajectory.travelTime << nl
         << "Wrote the optimal Zermelo trajectory to " << tracksVtk
-        << " and " << linesVtk << nl;
+        << " and " << linesVtk
+        << ". Route generation complete (100%)." << endl;
 
 }
 

@@ -10,13 +10,15 @@ REQUIREMENTS:
     system/fsStreamLineDict, a mesh under constant/polyMesh, fresh VTK output,
     and a building surface under constant/geometry. STL surfaces are
     preferred; if none exist, an OBJ surface compressed as .obj.gz is
-    supported.
+    supported. If postProcessing/zermelo-no-flow-tracks.vtk exists, display
+    its no-flow trajectory over the grid slice.
 """
 
 import argparse
 import gzip
 import re
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from typing import Optional
@@ -24,6 +26,10 @@ from typing import Optional
 import pyvista as pv
 from shapely import LineString, covers, points
 from shapely.ops import polygonize, unary_union
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from utils.vtkTrajectories import add_trajectories
 
 
 def read_scalar(
@@ -237,6 +243,11 @@ def main() -> None:
     add_outline(plotter, building_geometry, slice_height, "#6b1111")
     if clearance > 0:
         add_outline(plotter, buffered_buildings, slice_height, "#e53935")
+    add_trajectories(
+        plotter,
+        case_dir / "postProcessing" / "zermelo-no-flow-tracks.vtk",
+        color="black",
+    )
     plotter.add_legend(bcolor="white", face="rectangle", loc="lower right")
     plotter.add_text(
         (
