@@ -22,12 +22,16 @@ public:
 
 protected:
     const fvMesh& mesh_;
+    const dictionary& inputDict_;
+    const dictionary& generatorDict_;
+    bool variableHeight_;
     scalar routeHeight_;
     scalar minObstacleClearance_;
     scalar deviceSpeed_;
     scalar geometryTolerance_;
     point startPoint_;
     point endPoint_;
+    std::vector<point> generatedWaypoints_;
     std::vector<Polygon2> obstacleFootprints_;
     std::vector<Polygon2> bufferedObstacles_;
 
@@ -37,6 +41,11 @@ protected:
         const point& end,
         std::vector<point>& waypoints
     ) const = 0;
+
+    virtual scalar trajectoryTravelTime
+    (
+        const std::vector<point>& waypoints
+    ) const;
 
     bool pointIsClear(const Point2& position) const;
     bool segmentIsClear(const Point2& start, const Point2& end) const;
@@ -65,7 +74,8 @@ public:
     (
         const fvMesh& mesh,
         const dictionary& inputDict,
-        const dictionary& generatorDict
+        const dictionary& generatorDict,
+        const bool supportsVariableHeight = false
     );
 
     virtual ~ZermeloTrjGen();
@@ -75,6 +85,11 @@ public:
         const fileName& tracksVtk,
         const fileName& linesVtk
     );
+
+    const std::vector<point>& trajectoryWaypoints() const
+    {
+        return generatedWaypoints_;
+    }
 };
 
 }

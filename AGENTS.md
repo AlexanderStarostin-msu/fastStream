@@ -9,3 +9,5 @@ functional requirements in `doc/req/`. Treat them as project-wide constraints.
   Write `REQUIREMENTS` so it can guide regeneration of the script.
 - Preserve existing behavior and update directly related requirements or
   documentation when implementation changes affect them.
+
+TTF total time of flight along the trajectory

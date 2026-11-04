@@ -619,10 +619,17 @@ ZermeloTrjGen::ZermeloTrjGen
 (
     const fvMesh& mesh,
     const dictionary& inputDict,
-    const dictionary& generatorDict
+    const dictionary& generatorDict,
+    const bool supportsVariableHeight
 )
 :
     mesh_(mesh),
+    inputDict_(inputDict),
+    generatorDict_(generatorDict),
+    variableHeight_
+    (
+        generatorDict.lookupOrDefault<Switch>("variableHeight", false)
+    ),
     routeHeight_(0),
     minObstacleClearance_
     (
@@ -635,16 +642,16 @@ ZermeloTrjGen::ZermeloTrjGen
     geometryTolerance_(max(SMALL, 1e-9*mag(mesh.bounds().span()))),
     startPoint_(point(0, 0, 0)),
     endPoint_(point(0, 0, 0)),
+    generatedWaypoints_(),
     obstacleFootprints_(),
     bufferedObstacles_()
 {
     Info<< "[Zermelo] Validating route configuration." << endl;
-    const Switch variableHeight =
-        generatorDict.lookupOrDefault<Switch>("variableHeight", false);
-    if (variableHeight)
+    if (variableHeight_ && !supportsVariableHeight)
     {
         FatalIOErrorInFunction(generatorDict)
-            << "variableHeight routing is not implemented"
+            << "The selected Zermelo generator does not support "
+            << "variable-height routing"
             << exit(FatalIOError);
     }
 
@@ -867,6 +874,20 @@ ZermeloTrjGen::~ZermeloTrjGen()
 {}
 
 
+scalar ZermeloTrjGen::trajectoryTravelTime
+(
+    const std::vector<point>& waypoints
+) const
+{
+    scalar trajectoryLength = 0;
+    for (std::size_t pointi = 1; pointi < waypoints.size(); ++pointi)
+    {
+        trajectoryLength += mag(waypoints[pointi] - waypoints[pointi - 1]);
+    }
+    return trajectoryLength/deviceSpeed_;
+}
+
+
 void ZermeloTrjGen::prepareObstacles()
 {
     const bg::strategy::buffer::distance_symmetric<scalar> distanceStrategy
@@ -1020,6 +1041,8 @@ void ZermeloTrjGen::generate
             << exit(FatalError);
     }
 
+    generatedWaypoints_ = waypoints;
+
     scalar trajectoryLength = 0;
     for (std::size_t pointi = 1; pointi < waypoints.size(); ++pointi)
     {
@@ -1034,7 +1057,7 @@ void ZermeloTrjGen::generate
     trajectory.end = endPoint_;
     trajectory.waypoints = waypoints;
     trajectory.length = trajectoryLength;
-    trajectory.travelTime = trajectoryLength/deviceSpeed_;
+    trajectory.travelTime = trajectoryTravelTime(waypoints);
 
     ZermeloTrajectoryWriter::write
     (

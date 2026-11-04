@@ -10,6 +10,8 @@ class ZermeloTrjNoFlow
 :
     public ZermeloTrjGen
 {
+    scalar collapseLength_;
+
 protected:
     virtual bool buildTrajectory
     (

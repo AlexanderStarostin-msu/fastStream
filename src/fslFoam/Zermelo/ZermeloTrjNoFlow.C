@@ -2,6 +2,7 @@
 #include "error.H"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <queue>
 
@@ -61,8 +62,19 @@ ZermeloTrjNoFlow::ZermeloTrjNoFlow
     const dictionary& generatorDict
 )
 :
-    ZermeloTrjGen(mesh, inputDict, generatorDict)
-{}
+    ZermeloTrjGen(mesh, inputDict, generatorDict, false),
+    collapseLength_
+    (
+        generatorDict.lookupOrDefault<scalar>("collapseLength", 0.5)
+    )
+{
+    if (!(collapseLength_ >= 0) || !std::isfinite(collapseLength_))
+    {
+        FatalIOErrorInFunction(generatorDict)
+            << "collapseLength must be non-negative and finite"
+            << exit(FatalIOError);
+    }
+}
 
 
 bool ZermeloTrjNoFlow::buildTrajectory
@@ -273,6 +285,57 @@ bool ZermeloTrjNoFlow::buildTrajectory
         const Point2& position = nodes[reversePath[i]];
         waypoints.push_back(point(position.x(), position.y(), routeHeight_));
     }
+
+    bool changed = true;
+    while (collapseLength_ > 0 && changed && waypoints.size() > 3)
+    {
+        changed = false;
+
+        std::vector<point> simplified;
+        simplified.push_back(waypoints.front());
+
+        std::size_t i = 1;
+
+        while (i + 1 < waypoints.size() - 1)
+        {
+            const scalar len1 =
+                mag(waypoints[i] - waypoints[i-1]);
+
+            const scalar len2 =
+                mag(waypoints[i+1] - waypoints[i]);
+
+            if
+            (
+                len1 < collapseLength_
+            && len2 < collapseLength_
+            )
+            {
+                point middle =
+                    0.5*(waypoints[i] + waypoints[i+1]);
+
+                simplified.push_back(middle);
+
+                i += 2;
+                changed = true;
+            }
+            else
+            {
+                simplified.push_back(waypoints[i]);
+                ++i;
+            }
+        }
+
+        while (i < waypoints.size() - 1)
+        {
+            simplified.push_back(waypoints[i]);
+            ++i;
+        }
+
+        simplified.push_back(waypoints.back());
+
+        waypoints.swap(simplified);
+    }
+
     Info<< "[Zermelo] Route reconstruction complete (100%): "
         << waypoints.size() << " waypoints." << endl;
     return true;

@@ -38,9 +38,11 @@ void writeVtk
         totalLineSize += trajectories[trajectoryi].waypoints.size() + 1;
     }
 
+    //TODO: Comment trajecory according to the naming_suffix of the computational module
+    // e.g.change to "Zermelo full-flow trajectories" for ZermeloTrjFull
     vtk
         << "# vtk DataFile Version 3.0\n"
-        << "Zermelo no-flow trajectories\n"
+        << "Zermelo no-flow trajectories\n" 
         << "ASCII\n"
         << "DATASET POLYDATA\n"
         << "POINTS " << totalPoints << " double\n"

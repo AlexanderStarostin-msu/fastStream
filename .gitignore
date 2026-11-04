@@ -5,7 +5,7 @@ src/**/*.jpg
 src/**/*.bmp
 
 #TODO: Clarify how md created
-src/**/*.md
+#src/**/*.md
 
 src/**/Make/linux*
 
