@@ -14,6 +14,7 @@
 # - Display the configured mesh surface edges in the requested coordinate-plane
 #   view, or isometric when no plane is specified.
 # - Save the image as <case_name>.png in the current working directory.
+# - Use xvfb-run and Xvfb for headless rendering when DISPLAY is unset.
 
 import argparse
 import json
@@ -22,10 +23,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from utils.vtkTrajectories import add_trajectories
-
-import numpy as np
-import pyvista as pv
+from utils.headless import ensure_headless_display
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -41,6 +39,13 @@ parser.add_argument(
     help="coordinate plane to view (defaults to isometric)",
 )
 args = parser.parse_args()
+
+ensure_headless_display()
+
+from utils.vtkTrajectories import add_trajectories
+
+import numpy as np
+import pyvista as pv
 
 config_file = Path(__file__).with_name("utilConfig.json")
 try:
@@ -164,8 +169,8 @@ p.add_mesh(
     scalar_bar_args={"title": "Time of flight (s)"},
 )
 
-#add Zermelo no-flow trajectories if they exist
-add_trajectories( p, case_dir / "postProcessing" / "zermelo-no-flow-tracks.vtk", color="red")
+add_trajectories( p, case_dir / "postProcessing/zermelo-no-flow-tracks.vtk", color="gray")
+add_trajectories( p, case_dir / "postProcessing/zermelo-no-flow-lines.vtk", color="blue")
 
 plane_orientation = {
     "xy": ((0, 0, 1), (0, 1, 0)),

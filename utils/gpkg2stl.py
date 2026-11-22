@@ -12,6 +12,7 @@ USAGE:
 
 REQUIREMENTS:
     Python 3.9+ with geopandas, shapely 2.1+, trimesh, numpy, and pyvista.
+Headless rendering requires xvfb-run and Xvfb when DISPLAY is unset.
     Input must contain a ``multipolygons`` layer with a ``building`` column
     and a defined coordinate reference system. Buildings are reprojected to
     EPSG:25832, then translated so the footprint bounds are centered on the
@@ -32,10 +33,14 @@ import argparse
 import math
 import re
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from utils.headless import ensure_headless_display
 
 import geopandas as gpd
 import numpy as np
-import pyvista as pv
 import trimesh
 from shapely import constrained_delaunay_triangles, make_valid
 from shapely.geometry import GeometryCollection, MultiPolygon, Polygon
@@ -358,6 +363,8 @@ def export_stl(mesh, output_path):
 
 
 def save_preview(mesh, output_path):
+    import pyvista as pv
+
     plotter = pv.Plotter(off_screen=True)
     plotter.add_mesh(mesh, color="lightgray", show_edges=False)
     plotter.add_axes()
@@ -371,6 +378,7 @@ def main():
     parser.add_argument("input_gpkg", type=Path, help="input OSM GeoPackage")
     parser.add_argument("output_stl", type=Path, help="output STL path")
     args = parser.parse_args()
+    ensure_headless_display()
 
     buildings = extract_buildings(args.input_gpkg)
     buildings = project_to_metric(buildings)

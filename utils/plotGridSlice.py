@@ -11,7 +11,8 @@ REQUIREMENTS:
     and a building surface under constant/geometry. STL surfaces are
     preferred; if none exist, an OBJ surface compressed as .obj.gz is
     supported. If postProcessing/zermelo-no-flow-tracks.vtk exists, display
-    its no-flow trajectory over the grid slice.
+    its no-flow trajectory over the grid slice. Headless rendering requires
+    xvfb-run and Xvfb when DISPLAY is unset.
 """
 
 import argparse
@@ -23,11 +24,13 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from utils.headless import ensure_headless_display
+
 import pyvista as pv
 from shapely import LineString, covers, points
 from shapely.ops import polygonize, unary_union
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from utils.vtkTrajectories import add_trajectories
 
@@ -125,6 +128,7 @@ def main() -> None:
         help="PNG path (defaults to <case>/<case>_grid_slice_z_<height>m.png)",
     )
     args = parser.parse_args()
+    ensure_headless_display()
 
     case_dir = args.case.expanduser().resolve()
     dictionary_path = case_dir / "system" / "fsStreamLineDict"
@@ -243,10 +247,13 @@ def main() -> None:
     add_outline(plotter, building_geometry, slice_height, "#6b1111")
     if clearance > 0:
         add_outline(plotter, buffered_buildings, slice_height, "#e53935")
-    add_trajectories(
-        plotter,
-        case_dir / "postProcessing" / "zermelo-no-flow-tracks.vtk",
-        color="black",
+    add_trajectories( plotter,
+         case_dir / "postProcessing/zermelo-no-flow-tracks.vtk",
+         color="grey",
+    )
+    add_trajectories( plotter,
+        case_dir / "postProcessing/zermelo-no-flow-lines.vtk",
+        color="red",
     )
     plotter.add_legend(bcolor="white", face="rectangle", loc="lower right")
     plotter.add_text(
